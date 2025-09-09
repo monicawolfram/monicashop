@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0d1b2a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+      font-size: 2em;
+      font-weight: bold;
+    }
+
+    .menu-container {
+      display: flex;
+      gap: 40px;
+      width: 100%;
+      max-width: 800px;
+      justify-content: center;
+    }
+
+    .menu-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .card {
+      background: #1b263b;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+      background: #415a77;
+    }
+
+    .card img {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #f5f5f5;
+      display: block;
+      margin: 0 auto 15px auto;
+      padding: 10px;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dashboard</h1>
+
+  <div class="menu-container">
+    <!-- Left Column -->
+    <div class="menu-column">
+      <a href="/shop" class="card">
+        <img src="../images/1.jpg" alt="shop">
+        <p>Shop</p>
+      </a>
+
+      <a href="/agent" class="card">
+        <img src="../images/2.jpg" alt="agent">
+        <p>Agent</p>
+      </a>
+
+      <a href="/Bedsheets" class="card">
+        <img src="../images/3.jpg" alt="Bedsheets">
+        <p>Bedsheets</p>
+      </a>
+    </div>
+
+    <!-- Right Column -->
+    <div class="menu-column">
+      <a href="/profile" class="card">
+        <img src="../images/4.jpg" alt="Profile">
+        <p>Profile</p>
+      </a>
+
+      <a href="/settings" class="card">
+        <img src="../images/5.jpg" alt="Settings">
+        <p>Settings</p>
+      </a>
+
+       <a href="/more" class="card">
+        <img src="../images/6.jpg" alt="more">
+        <p>more</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

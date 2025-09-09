@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shop Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card {
+      border-radius: 12px;
+    }
+    .profit-card {
+      transition: transform 0.2s ease-in-out;
+    }
+    .profit-card:hover {
+      transform: translateY(-5px);
+    }
+    .status-badge {
+      font-size: 0.8rem;
+      padding: 5px 10px;
+    }
+    .table-hover tbody tr:hover {
+      background-color: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Monica Shop</a>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <h2 class="mb-4">Shop Dashboard</h2>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card shadow-sm p-3 text-center profit-card">
+          <h6>Useful Products</h6>
+          <p><%= typeof usefulCount !== "undefined" ? usefulCount : 0 %></p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card shadow-sm p-3 text-center profit-card">
+          <h6>Non-Useful Products</h6>
+          <p><%= typeof nonUsefulCount !== "undefined" ? nonUsefulCount : 0 %></p>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="card shadow-sm p-3 text-center profit-card border-success">
+          <h6>Daily Profit</h6>
+          <p class="fs-5 text-success">
+            $<%= typeof dailyProfit !== "undefined" ? dailyProfit.toFixed(2) : "0.00" %>
+          </p>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="card shadow-sm p-3 text-center profit-card border-primary">
+          <h6>Weekly Profit</h6>
+          <p class="fs-5 text-primary">
+            $<%= typeof weeklyProfit !== "undefined" ? weeklyProfit.toFixed(2) : "0.00" %>
+          </p>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="card shadow-sm p-3 text-center profit-card border-warning">
+          <h6>Monthly Profit</h6>
+          <p class="fs-5 text-warning">
+            $<%= typeof monthlyProfit !== "undefined" ? monthlyProfit.toFixed(2) : "0.00" %>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Products</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Stock</th>
+              <th>Sold</th>
+              <th>Cost Price</th>
+              <th>Sell Price</th>
+              <th>Profit/Unit</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+           <% if (typeof products !== 'undefined' && products.length > 0) { %>
+  <% for (let i = 0; i < products.length; i++) { 
+       let product = products[i];
+       let profitPerUnit = product.sell_price - product.cost_price;
+       let rowClass = "";
+       let status = "";
+
+       if (product.stock < 5) {
+         rowClass = "table-danger";
+         status = "Low Stock";
+       } else if (product.sold > 50) {
+         rowClass = "table-success";
+         status = "Fast Selling";
+       } else if (product.sold === 0) {
+         rowClass = "table-secondary";
+         status = "Not Selling";
+       } else {
+         status = "Normal";
+       }
+  %>
+    <tr class="<%= rowClass %>">
+      <td><%= product.name %></td>
+      <td><%= product.category %></td>
+      <td><%= product.stock %></td>
+      <td><%= product.sold %></td>
+      <td>$<%= product.cost_price.toFixed(2) %></td>
+      <td>$<%= product.sell_price.toFixed(2) %></td>
+      <td>$<%= profitPerUnit.toFixed(2) %></td>
+      <td><span class="badge bg-dark status-badge"><%= status %></span></td>
+      <td>
+        <a href="/shop/edit/<%= product.id %>" class="btn btn-sm btn-outline-primary">Edit</a>
+        <a href="/shop/delete/<%= product.id %>" class="btn btn-sm btn-outline-danger">Delete</a>
+      </td>
+    </tr>
+  <% } %>
+<% } else { %>
+  <tr>
+    <td colspan="9" class="text-center">No products found</td>
+  </tr>
+<% } %>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sales Chart -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Sales & Profit Analysis</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <canvas id="salesChart"></canvas>
+          </div>
+          <div class="col-md-6">
+            <canvas id="profitChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ 
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Safely pass salesData from EJS to JS
+  const salesLabels = <%- JSON.stringify(typeof salesData !== 'undefined' ? salesData.labels : []) %>;
+  const salesValues = <%- JSON.stringify(typeof salesData !== 'undefined' ? salesData.values : []) %>;
+
+  // Sales Chart (Bar)
+  new Chart(document.getElementById('salesChart'), {
+    type: 'bar',
+    data: {
+      labels: salesLabels,
+      datasets: [{
+        label: 'Products Sold',
+        data: salesValues,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+      }]
+    }
+  });
+
+  // Profit Chart (Pie)
+  new Chart(document.getElementById('profitChart'), {
+    type: 'pie',
+    data: {
+      labels: salesLabels,
+      datasets: [{
+        label: 'Profit Distribution',
+        data: salesValues,
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.6)',
+          'rgba(54, 162, 235, 0.6)',
+          'rgba(255, 206, 86, 0.6)',
+          'rgba(75, 192, 192, 0.6)',
+          'rgba(153, 102, 255, 0.6)',
+          'rgba(255, 159, 64, 0.6)'
+        ]
+      }]
+    }
+  });
+});
+</script>
+
+
+</body>
+</html>

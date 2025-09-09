@@ -1,0 +1,40 @@
+body {
+  /* Background image with gradient overlay */
+  background: linear-gradient(135deg, rgba(106,17,203,0.6), rgba(37,117,252,0.6)),
+              url("../images/2.jpg") no-repeat center center fixed;
+  background-size: cover;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Login Card */
+.login-card {
+  width: 380px;
+  background: rgba(255, 255, 255, 0.95); /* Slight transparency */
+  border-radius: 15px;
+  backdrop-filter: blur(6px); /* Frosted glass effect */
+  box-shadow: 0px 6px 20px rgba(0,0,0,0.25);
+}
+
+.login-card h4 {
+  font-weight: bold;
+  color: #333;
+}
+
+/* Buttons */
+.btn-primary {
+  background: #2575fc;
+  border: none;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background: #1a5ed8;
+  transform: scale(1.05);
+}
+
+/* Toggle password button */
+#togglePassword {
+  border-left: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
