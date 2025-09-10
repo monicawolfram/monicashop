@@ -2,6 +2,8 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
 const dbConfig = require("../config/dbConfig"); // create dbConfig.js for db connection
 
+
+
 // Show login page
 exports.getLogin = (req, res) => {
   let message = "";
@@ -245,36 +247,87 @@ exports.getShopDashboard = async (req, res) => {
     });
   }
 };
-
-// Add Product
-exports.addProduct = async (req, res) => {
+exports.getAllProducts = async (req, res) => {
   try {
-    const { name, category, cost_price, sell_price, stock } = req.body;
-    await db.query(
-      'INSERT INTO products (name, category, cost_price, sell_price, stock) VALUES (?, ?, ?, ?, ?)',
-      [name, category, cost_price, sell_price, stock]
-    );
-    res.redirect('/shop');
+    const [rows] = await dbConfig.execute('SELECT * FROM products ORDER BY id DESC');
+    res.json({ success: true, products: rows });
   } catch (err) {
     console.error(err);
-    res.sendStatus(500);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+exports.addProduct = async (req, res) => {
+  try {
+    const { name, purchase_price, sell_price, quantity, description } = req.body;
+    const image = req.file ? '/uploads/' + req.file.filename : null;
+
+    await db.execute(
+      'INSERT INTO products (name, purchase_price, sell_price, quantity, description, image) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, purchase_price, sell_price, quantity, description, image]
+    );
+
+    res.json({ success: true, message: 'Product added' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+exports.updateProduct = async (req, res) => {
+  try {
+    const { name, purchase_price, sell_price, quantity, description } = req.body;
+    const id = req.params.id;
+    const image = req.file ? '/uploads/' + req.file.filename : null;
+
+    const query = image
+      ? 'UPDATE products SET name=?, purchase_price=?, sell_price=?, quantity=?, description=?, image=? WHERE id=?'
+      : 'UPDATE products SET name=?, purchase_price=?, sell_price=?, quantity=?, description=? WHERE id=?';
+
+    const params = image
+      ? [name, purchase_price, sell_price, quantity, description, image, id]
+      : [name, purchase_price, sell_price, quantity, description, id];
+
+    await db.execute(query, params);
+    res.json({ success: true, message: 'Product updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+exports.deleteProduct = async (req, res) => {
+  try {
+    const id = req.params.id;
+    await db.execute('DELETE FROM products WHERE id=?', [id]);
+    res.json({ success: true, message: 'Product deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// Edit Product
-exports.editProduct = async (req, res) => {
-  const { id } = req.params;
-  const { name, category, cost_price, sell_price, stock } = req.body;
-  await db.query(
-    'UPDATE products SET name=?, category=?, cost_price=?, sell_price=?, stock=? WHERE id=?',
-    [name, category, cost_price, sell_price, stock, id]
-  );
-  res.redirect('/shop');
-};
 
-// Delete Product
-exports.deleteProduct = async (req, res) => {
-  const { id } = req.params;
-  await db.query('DELETE FROM products WHERE id=?', [id]);
-  res.redirect('/shop');
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exports.getHome = (req, res) => {
+  res.render("Home");
+} ;
+exports.getProductManagement = (req, res) => {
+  res.render("product_management");
+} ;

@@ -1,6 +1,28 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
+const multer = require('multer');
+const path = require('path');
+
+// Multer setup for image uploads
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, path.join(__dirname, '../public/images')); // make sure folder exists
+  },
+  filename: function(req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage }); // <--- THIS IS THE DEFINED 'upload'
+
+
+
+
+
+
+
+
 
 // Routes
 router.get("/", authController.getLogin);
@@ -17,15 +39,30 @@ router.post("/register", authController.registerUser);
 
 router.get("/shop", authController.getShop);
 router.get('/shop', authController.getShopDashboard);
-router.post('/shop/add', authController.addProduct);
-router.post('/shop/edit/:id', authController.editProduct);
-router.get('/shop/delete/:id', authController.deleteProduct);
+
+router.get('/products', authController.getAllProducts);
+router.post('/products', upload.single('image'), authController.addProduct);
+router.put('/products/:id', upload.single('image'), authController.updateProduct);
+router.delete('/products/:id', authController.deleteProduct);
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+router.get("/shop/Home", authController.getHome);
+router.get("/shop/product_management", authController.getProductManagement);
 
 
 module.exports = router;

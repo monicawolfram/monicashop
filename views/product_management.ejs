@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Management - Shop Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f6f9;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    .form-container, .table-container {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    input, select, button, textarea {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      max-width: 200px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+    table th {
+      background: #3498db;
+      color: white;
+    }
+    img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>➕ Ongeza Bidhaa Mpya</h2>
+<div class="form-container">
+  <form id="productForm">
+    <input type="text" id="productName" placeholder="Jina la Bidhaa" required>
+    <input type="number" id="purchasePrice" placeholder="Bei ya Manunuzi" required>
+    <input type="number" id="sellingPrice" placeholder="Bei ya Mauzo" required>
+    <input type="number" id="quantity" placeholder="Idadi ya Bidhaa" required>
+    <input type="file" id="productImage" accept="image/*">
+    <textarea id="description" placeholder="Maelezo ya Bidhaa" rows="3"></textarea>
+    <button type="submit">Ongeza Bidhaa</button>
+  </form>
+</div>
+
+<h2>📦 Orodha ya Bidhaa Zote</h2>
+<div class="table-container">
+  <table id="productTable">
+    <thead>
+      <tr>
+        <th>Picha</th>
+        <th>Jina</th>
+        <th>Bei ya Manunuzi</th>
+        <th>Bei ya Mauzo</th>
+        <th>Idadi</th>
+        <th>Maelezo</th>
+        <th>Vitendo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Bidhaa mpya zitaongezwa hapa -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const form = document.getElementById('productForm');
+  const tableBody = document.querySelector('#productTable tbody');
+  let products = [];
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('productName').value;
+    const purchase = document.getElementById('purchasePrice').value;
+    const selling = document.getElementById('sellingPrice').value;
+    const quantity = document.getElementById('quantity').value;
+    const description = document.getElementById('description').value;
+    const imageFile = document.getElementById('productImage').files[0];
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const imageUrl = imageFile ? event.target.result : '';
+      addProduct(name, purchase, selling, quantity, description, imageUrl);
+    };
+    if(imageFile){
+      reader.readAsDataURL(imageFile);
+    } else {
+      addProduct(name, purchase, selling, quantity, description, '');
+    }
+  });
+
+  function addProduct(name, purchase, selling, quantity, description, imageUrl){
+    const product = { name, purchase, selling, quantity, description, imageUrl };
+    products.push(product);
+    displayProducts();
+    form.reset();
+  }
+
+  function displayProducts() {
+    tableBody.innerHTML = '';
+    products.forEach((p, index) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${p.imageUrl ? `<img src="${p.imageUrl}" alt="Picha">` : 'N/A'}</td>
+        <td>${p.name}</td>
+        <td>TZS ${parseFloat(p.purchase).toLocaleString()}</td>
+        <td>TZS ${parseFloat(p.selling).toLocaleString()}</td>
+        <td>${p.quantity}</td>
+        <td>${p.description}</td>
+        <td>
+          <button onclick="editProduct(${index})">✏ Edit</button>
+          <button onclick="deleteProduct(${index})">🗑 Futa</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  function deleteProduct(index) {
+    products.splice(index, 1);
+    displayProducts();
+  }
+
+  function editProduct(index) {
+    const product = products[index];
+    document.getElementById('productName').value = product.name;
+    document.getElementById('purchasePrice').value = product.purchase;
+    document.getElementById('sellingPrice').value = product.selling;
+    document.getElementById('quantity').value = product.quantity;
+    document.getElementById('description').value = product.description;
+    products.splice(index, 1);
+    displayProducts();
+  }
+</script>
+
+</body>
+</html>
