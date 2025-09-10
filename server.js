@@ -10,6 +10,9 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(session({ secret: "mySecret", resave: false, saveUninitialized: true }));
+app.use(express.json());             // Parses JSON bodies
+app.use(express.urlencoded({ extended: true })); // Parses form bodies
+
 
 // Set EJS
 app.set("view engine", "ejs");

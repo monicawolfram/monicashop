@@ -44,9 +44,12 @@ router.get('/products', authController.getAllProducts);
 router.post('/products', upload.single('image'), authController.addProduct);
 router.put('/products/:id', upload.single('image'), authController.updateProduct);
 router.delete('/products/:id', authController.deleteProduct);
-
-
-
+router.get('/products/:id', authController.getProductById);  // ✅ needed
+router.get('/sales', authController.getAllSales);
+router.post('/sales/add', authController.addSale);
+router.get('/pl', authController.getPL);
+router.post('/add-sale', authController.addSale);
+router.post('/add-expense', authController.addExpense);
 
 
 
@@ -63,6 +66,6 @@ router.delete('/products/:id', authController.deleteProduct);
 
 router.get("/shop/Home", authController.getHome);
 router.get("/shop/product_management", authController.getProductManagement);
-
-
+router.get("/shop/Sales", authController.getSales);
+router.get("/shop/profite_loss", authController.getProfiteLoss);
 module.exports = router;

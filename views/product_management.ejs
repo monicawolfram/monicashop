@@ -65,13 +65,14 @@
 
 <h2>➕ Ongeza Bidhaa Mpya</h2>
 <div class="form-container">
-  <form id="productForm">
-    <input type="text" id="productName" placeholder="Jina la Bidhaa" required>
-    <input type="number" id="purchasePrice" placeholder="Bei ya Manunuzi" required>
-    <input type="number" id="sellingPrice" placeholder="Bei ya Mauzo" required>
-    <input type="number" id="quantity" placeholder="Idadi ya Bidhaa" required>
-    <input type="file" id="productImage" accept="image/*">
-    <textarea id="description" placeholder="Maelezo ya Bidhaa" rows="3"></textarea>
+  <form id="productForm" enctype="multipart/form-data">
+    <input type="text" name="name" placeholder="Jina la Bidhaa" required>
+    <input type="number" name="cost_price" placeholder="Bei ya Manunuzi" required>
+    <input type="number" name="sell_price" placeholder="Bei ya Mauzo" required>
+    <input type="number" name="stock" placeholder="Idadi ya Bidhaa" required>
+    <input type="text" name="category" placeholder="Category">
+    <input type="file" name="image" accept="image/*">
+    <textarea name="description" placeholder="Maelezo ya Bidhaa" rows="3"></textarea>
     <button type="submit">Ongeza Bidhaa</button>
   </form>
 </div>
@@ -97,75 +98,118 @@
 </div>
 
 <script>
-  const form = document.getElementById('productForm');
-  const tableBody = document.querySelector('#productTable tbody');
-  let products = [];
+const form = document.getElementById('productForm');
+const tableBody = document.querySelector('#productTable tbody');
 
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
+let editProductId = null; // Track the product being edited
 
-    const name = document.getElementById('productName').value;
-    const purchase = document.getElementById('purchasePrice').value;
-    const selling = document.getElementById('sellingPrice').value;
-    const quantity = document.getElementById('quantity').value;
-    const description = document.getElementById('description').value;
-    const imageFile = document.getElementById('productImage').files[0];
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      const imageUrl = imageFile ? event.target.result : '';
-      addProduct(name, purchase, selling, quantity, description, imageUrl);
-    };
-    if(imageFile){
-      reader.readAsDataURL(imageFile);
-    } else {
-      addProduct(name, purchase, selling, quantity, description, '');
-    }
-  });
-
-  function addProduct(name, purchase, selling, quantity, description, imageUrl){
-    const product = { name, purchase, selling, quantity, description, imageUrl };
-    products.push(product);
-    displayProducts();
-    form.reset();
-  }
-
-  function displayProducts() {
+// Load products from backend
+async function loadProducts() {
+  try {
+    const res = await fetch('/products');
+    const data = await res.json();
     tableBody.innerHTML = '';
-    products.forEach((p, index) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${p.imageUrl ? `<img src="${p.imageUrl}" alt="Picha">` : 'N/A'}</td>
-        <td>${p.name}</td>
-        <td>TZS ${parseFloat(p.purchase).toLocaleString()}</td>
-        <td>TZS ${parseFloat(p.selling).toLocaleString()}</td>
-        <td>${p.quantity}</td>
-        <td>${p.description}</td>
-        <td>
-          <button onclick="editProduct(${index})">✏ Edit</button>
-          <button onclick="deleteProduct(${index})">🗑 Futa</button>
-        </td>
-      `;
-      tableBody.appendChild(row);
+    if(data.success){
+      data.products.forEach((p) => {
+        const status = p.stock <= 5 ? 'Pungufu' : 'Muhimu';
+        const row = document.createElement('tr');
+        row.innerHTML = `  
+          <td>${p.image ? `<img src="${p.image}" alt="Picha">` : 'N/A'}</td>
+          <td>${p.name}</td>
+          <td>TZS ${parseFloat(p.cost_price).toLocaleString()}</td>
+          <td>TZS ${parseFloat(p.sell_price).toLocaleString()}</td>
+          <td>${p.stock}</td>
+          <td>${p.description || ''}</td>
+          <td>
+            <button onclick="editProduct(${p.id})">✏ Edit</button>
+            <button onclick="deleteProduct(${p.id})">🗑 Futa</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+  } catch(err){
+    console.error('Error loading products:', err);
+  }
+}
+
+// Add or Update product
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(form);
+
+  try {
+    let url = '/products';
+    let method = 'POST';
+    if(editProductId){
+      url = `/products/${editProductId}`;
+      method = 'PUT';
+    }
+
+    const res = await fetch(url, {
+      method: method,
+      body: formData
     });
-  }
+    const data = await res.json();
 
-  function deleteProduct(index) {
-    products.splice(index, 1);
-    displayProducts();
+    if(data.success){
+      form.reset();
+      editProductId = null; // Reset edit mode
+      loadProducts(); // refresh table
+    } else {
+      alert('Error saving product');
+    }
+  } catch(err){
+    console.error('Error:', err);
   }
+});
 
-  function editProduct(index) {
-    const product = products[index];
-    document.getElementById('productName').value = product.name;
-    document.getElementById('purchasePrice').value = product.purchase;
-    document.getElementById('sellingPrice').value = product.selling;
-    document.getElementById('quantity').value = product.quantity;
-    document.getElementById('description').value = product.description;
-    products.splice(index, 1);
-    displayProducts();
+// Edit product
+async function editProduct(id) {
+  try {
+    const res = await fetch(`/products/${id}`);
+    if (!res.ok) {
+      alert('Product not found');
+      return;
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      const p = data.product;
+      document.getElementById('productName').value = p.name;
+      document.getElementById('purchasePrice').value = p.cost_price;
+      document.getElementById('sellingPrice').value = p.sell_price;
+      document.getElementById('quantity').value = p.stock;
+      document.getElementById('description').value = p.description || '';
+      editProductId = p.id; // Set form in edit mode
+    } else {
+      alert('Product not found');
+    }
+  } catch (err) {
+    console.error('Error fetching product:', err);
+    alert('Failed to fetch product');
   }
+}
+
+
+// Delete product
+async function deleteProduct(id){
+  if(!confirm('Una uhakika unataka kufuta bidhaa hii?')) return;
+  try {
+    const res = await fetch(`/products/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if(data.success){
+      loadProducts();
+    }
+  } catch(err){
+    console.error('Error deleting product:', err);
+  }
+}
+
+// Load table on page load
+loadProducts();
 </script>
+
 
 </body>
 </html>

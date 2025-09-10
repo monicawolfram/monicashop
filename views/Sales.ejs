@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<title>Ongeza Mauzo</title>
+ <style>
+    body { 
+      font-family: Arial; 
+      background: #f4f6f9; 
+      margin:0; 
+      padding:0; 
+      font-size: 16px;
+    }
+    header { 
+      background: #2c3e50; 
+      color:white; 
+      text-align:center; 
+      padding:20px;
+      font-size: 24px; 
+    }
+    nav { 
+      background:#34495e; 
+      padding:10px; 
+      text-align:center;
+    }
+    nav button { 
+      background:none; 
+      border:none; 
+      color:white; 
+      cursor:pointer; 
+      margin:0 10px; 
+      font-size:16px; 
+      padding:6px 10px;
+    }
+    nav button:hover { 
+      text-decoration:underline; 
+    }
+    .section { 
+      padding:20px; 
+      max-width:1000px; 
+      margin:auto;
+    }
+    .card-container { 
+      display:grid; 
+      grid-template-columns: repeat(2,1fr); 
+      gap:15px; 
+      margin-top:20px; 
+    }
+    .card { 
+      background:white; 
+      padding:15px; 
+      border-radius:10px; 
+      box-shadow:0 3px 8px rgba(0,0,0,0.15); 
+      font-size:16px; 
+    }
+    table { 
+      width:100%; 
+      border-collapse:collapse; 
+      margin-top:25px; 
+      background:white; 
+      box-shadow:0 3px 8px rgba(0,0,0,0.15); 
+      font-size:15px; 
+    }
+    table th, table td { 
+      border:1px solid #ddd; 
+      padding:10px; 
+      text-align:center; 
+    }
+    table th { 
+      background:#3498db; 
+      color:white; 
+    }
+    .form-container { 
+      background:white; 
+      padding:15px; 
+      box-shadow:0 3px 8px rgba(0,0,0,0.15); 
+      margin-top:25px; 
+      border-radius:10px; 
+      font-size:15px;
+    }
+    .form-container input, 
+    .form-container button { 
+      width:100%; 
+      margin:6px 0; 
+      padding:10px; 
+      border-radius:6px; 
+      border:1px solid #ccc; 
+      font-size:15px;
+    }
+    .form-container button { 
+      background:#3498db; 
+      color:white; 
+      cursor:pointer; 
+      font-size:16px;
+    }
+    .form-container button:hover { 
+      background:#2980b9; 
+    }
+  </style>
+
+</head>
+<body>
+
+<header>
+  <h1>💰 Ongeza Mauzo</h1>
+</header>
+
+<div class="form-container">
+  <form id="saleForm">
+    <input type="text" id="fullname" placeholder="Jina" required>
+    <input type="number" id="saleQuantity" placeholder="Kiasi kilichouzwa" required>
+    <button type="submit">Ongeza Mauzo</button>
+  </form>
+</div>
+
+<h2>Muhtasari wa Mauzo</h2>
+<div class="card-container">
+  <div class="card" id="dailyCard"><strong>Siku:</strong> 0 Tsh</div>
+  <div class="card" id="weeklyCard"><strong>Wiki:</strong> 0 Tsh</div>
+  <div class="card" id="monthlyCard"><strong>Mwezi:</strong> 0 Tsh</div>
+  <div class="card" id="yearlyCard"><strong>Mwaka:</strong> 0 Tsh</div>
+</div>
+
+<h2>mauzo ya Karibuni</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Tarehe & Saa</th><th>Kiasi</th><th>amount</th>
+    </tr>
+  </thead>
+  <tbody id="transactionsTable"></tbody>
+</table>
+
+<script>
+let transactions = [];
+async function loadSales() {
+  try {
+    const res = await fetch('/sales'); 
+    transactions = await res.json();
+    updateTotals();
+    updateTable();
+  } catch (err) {
+    console.error('Error fetching sales:', err);
+  }
+}
+
+// Function ya kuhesabu totals
+function updateTotals() {
+  const now = new Date();
+  let daily=0, weekly=0, monthly=0, yearly=0;
+
+  transactions.forEach(t => {
+    const d = new Date(t.date);
+
+    // Siku
+    if(d.toDateString() === now.toDateString()) daily += t.quantity;
+    // Wiki (ISO week)
+    const weekDiff = Math.floor((now - d)/(1000*60*60*24*7));
+    if(weekDiff === 0) weekly += t.quantity;
+    // Mwezi
+    if(d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()) monthly += t.quantity;
+    // Mwaka
+    if(d.getFullYear()===now.getFullYear()) yearly += t.quantity;
+  });
+
+  document.getElementById('dailyCard').innerHTML=`<strong>Siku:</strong> ${daily.toLocaleString()} units`;
+  document.getElementById('weeklyCard').innerHTML=`<strong>Wiki:</strong> ${weekly.toLocaleString()} units`;
+  document.getElementById('monthlyCard').innerHTML=`<strong>Mwezi:</strong> ${monthly.toLocaleString()} units`;
+  document.getElementById('yearlyCard').innerHTML=`<strong>Mwaka:</strong> ${yearly.toLocaleString()} units`;
+}
+
+// Function ya ku-update table
+function updateTable() {
+  const tbody = document.getElementById('transactionsTable');
+  tbody.innerHTML = '';
+  transactions.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(t.date).toLocaleString()}</td>
+                    <td>${t.fullname}</td>
+                    <td>${t.quantity}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Add sale form
+document.getElementById('saleForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const newSale = {
+    fullname: document.getElementById('fullname').value,
+    quantity: parseInt(document.getElementById('saleQuantity').value)
+  };
+
+  try {
+    const res = await fetch('/sales/add', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(newSale)
+    });
+
+    if(res.ok){
+      document.getElementById('saleForm').reset();
+      loadSales(); // Auto-refresh data na totals
+    } else {
+      alert('Hitilafu: Mauzo hayakuongezwa');
+    }
+  } catch(err) {
+    console.error('Error adding sale:', err);
+  }
+});
+
+// Load sales initially
+loadSales();
+</script>
+
+
+
+</body>
+</html>

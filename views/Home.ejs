@@ -4,65 +4,17 @@
   <meta charset="UTF-8">
   <title>Shop Dashboard</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #2c3e50;
-      color: white;
-      padding: 15px;
-      text-align: center;
-    }
-    .container {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 15px;
-      padding: 20px;
-    }
-    .card {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .card h3 {
-      margin: 0 0 10px;
-      font-size: 16px;
-      color: #333;
-    }
-    .card p {
-      font-size: 14px;
-      color: #555;
-    }
-    .table-container {
-      grid-column: span 4;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    table th, table td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    table th {
-      background: #3498db;
-      color: white;
-    }
-    canvas {
-      margin-top: 15px;
-      width: 100% !important;
-      max-height: 300px;
-    }
+    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; }
+    header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+    .container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; }
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .card h3 { margin: 0 0 10px; font-size: 16px; color: #333; }
+    .card p { font-size: 14px; color: #555; }
+    .table-container { grid-column: span 4; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table th, table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    table th { background: #3498db; color: white; }
+    canvas { margin-top: 15px; width: 100% !important; max-height: 300px; }
   </style>
 </head>
 <body>
@@ -71,28 +23,24 @@
   <h1>📊 Shop Dashboard</h1>
 </header>
 
-<div class="container">
-  <!-- Mauzo -->
- <div class="container" id="dashboardCards">
-  <!-- Cards will be filled dynamically -->
+<div class="container" id="dashboardCards">
+  <!-- Cards will be generated dynamically -->
 </div>
 
-<!-- Jedwali la bidhaa zote -->
 <div class="table-container">
   <h3>📦 Orodha ya Bidhaa Zote</h3>
   <table id="productsTable">
-  <tr>
-    <th>Jina la Bidhaa</th>
-    <th>Idadi</th>
-    <th>Bei ya Manunuzi</th>
-    <th>Bei ya Mauzo</th>
-    <th>Status</th>
-  </tr>
-  <!-- Rows will be added dynamically -->
-</table>
+    <tr>
+      <th>Jina la Bidhaa</th>
+      <th>Idadi</th>
+      <th>Bei ya Manunuzi</th>
+      <th>Bei ya Mauzo</th>
+      <th>Status</th>
+    </tr>
+    <!-- Rows will be added dynamically -->
+  </table>
 </div>
 
-<!-- Charts -->
 <div class="table-container">
   <h3>📈 Grafu ya Mauzo na Bidhaa</h3>
   <canvas id="salesChart"></canvas>
@@ -103,144 +51,45 @@
 
 <script>
 async function loadDashboard() {
-  const res = await fetch('/api/dashboard');
-  const data = await res.json();
-
-  // Update sales cards
-  document.querySelectorAll(".card")[0].querySelector("p").innerText = "TZS " + data.sales.today.toLocaleString();
-  document.querySelectorAll(".card")[1].querySelector("p").innerText = "TZS " + data.sales.week.toLocaleString();
-  document.querySelectorAll(".card")[2].querySelector("p").innerText = "TZS " + data.sales.month.toLocaleString();
-  document.querySelectorAll(".card")[3].querySelector("p").innerText = "TZS " + data.sales.year.toLocaleString();
-
-  // Update profit/loss cards
-  document.querySelectorAll(".card")[4].querySelector("p").innerText = "TZS " + data.profit.today.toLocaleString();
-  document.querySelectorAll(".card")[5].querySelector("p").innerText = "TZS " + data.profit.week.toLocaleString();
-  document.querySelectorAll(".card")[6].querySelector("p").innerText = "TZS " + data.profit.month.toLocaleString();
-  document.querySelectorAll(".card")[7].querySelector("p").innerText = "TZS " + data.profit.year.toLocaleString();
-
-  // Update table with status automatically
-  const table = document.querySelector("table");
-  table.innerHTML = `
-    <tr>
-      <th>Jina la Bidhaa</th>
-      <th>Idadi</th>
-      <th>Bei ya Manunuzi</th>
-      <th>Bei ya Mauzo</th>
-      <th>Status</th>
-    </tr>`;
-  data.products.forEach(p => {
-    let status = p.quantity <= p.min_stock ? 'Pungufu' : 'Muhimu';
-    table.innerHTML += `
-      <tr>
-        <td>${p.name}</td>
-        <td>${p.quantity}</td>
-        <td>TZS ${p.cost_price}</td>
-        <td>TZS ${p.sell_price}</td>
-        <td>${status}</td>
-      </tr>`;
-  });
-
-  // Update charts
-  new Chart(document.getElementById('salesChart'), {
-    type: 'line',
-    data: {
-      labels: ['Leo', 'Wiki', 'Mwezi', 'Mwaka'],
-      datasets: [{
-        label: 'Mauzo (TZS)',
-        data: [data.sales.today, data.sales.week, data.sales.month, data.sales.year],
-        borderColor: 'blue',
-        fill: false
-      }]
-    }
-  });
-
-  new Chart(document.getElementById('productsChart'), {
-    type: 'bar',
-    data: {
-      labels: data.products.map(p => p.name),
-      datasets: [{
-        label: 'Idadi ya Bidhaa',
-        data: data.products.map(p => p.quantity),
-        backgroundColor: ['red','green','orange','gray','purple']
-      }]
-    }
-  });
-}
-
-// Load dashboard automatically
-loadDashboard();
-</script>
-
-<script>
-async function loadProducts() {
   try {
-    const res = await fetch('/api/dashboard');
+    // Fetch all dashboard data including products, sales, profit
+    const res = await fetch('/products'); // <-- backend endpoint for products
     const data = await res.json();
 
-    const table = document.getElementById('productsTable');
-    
-    // Remove old rows except header
-    table.querySelectorAll('tr:not(:first-child)').forEach(row => row.remove());
+    if (!data.success) return;
 
-    // Add new rows dynamically
-    data.products.forEach(p => {
-      const status = p.quantity <= p.min_stock ? 'Pungufu' : 'Muhimu';
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${p.name}</td>
-        <td>${p.quantity}</td>
-        <td>TZS ${p.cost_price.toLocaleString()}</td>
-        <td>TZS ${p.sell_price.toLocaleString()}</td>
-        <td>${status}</td>
-      `;
-      table.appendChild(row);
-    });
-  } catch (err) {
-    console.error('Error loading products:', err);
-  }
-}
-
-// Load table automatically
-loadProducts();
-</script>
-
-<script>
-async function loadDashboardCards() {
-  try {
-    const res = await fetch('/api/dashboard');
-    const data = await res.json();
-
+    // ------------------- CARDS -------------------
     const container = document.getElementById('dashboardCards');
-    container.innerHTML = ''; // Clear existing cards
+    container.innerHTML = '';
 
-    // 1️⃣ Sales Cards
-    const salesPeriods = ['Leo', 'Wiki', 'Mwezi', 'Mwaka'];
-    salesPeriods.forEach((period, i) => {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerHTML = `
-        <h3>Mauzo ya ${period}</h3>
-        <p>TZS ${data.sales[period.toLowerCase()].toLocaleString()}</p>
-      `;
-      container.appendChild(div);
-    });
+    const periods = ['Leo', 'Wiki', 'Mwezi', 'Mwaka'];
 
-    // 2️⃣ Profit/Loss Cards
-    salesPeriods.forEach((period, i) => {
-      const div = document.createElement('div');
-      div.className = 'card';
-      div.innerHTML = `
-        <h3>Faida/Hasara (${period})</h3>
-        <p>Faida: TZS ${data.profit[period.toLowerCase()].toLocaleString()}</p>
-      `;
-      container.appendChild(div);
-    });
+    // Sales Cards
+    if(data.sales){
+      periods.forEach(period => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<h3>Mauzo ya ${period}</h3><p>TZS ${data.sales[period.toLowerCase()]?.toLocaleString() || 0}</p>`;
+        container.appendChild(div);
+      });
+    }
 
-    // 3️⃣ Product Stock Cards
-    const lowStock = data.products.filter(p => p.quantity <= p.min_stock).map(p => p.name).join(', ') || 'Hakuna';
-    const important = data.products.filter(p => p.quantity > p.min_stock).map(p => p.name).join(', ') || 'Hakuna';
-    const nonImportant = data.products.filter(p => p.quantity > p.min_stock && p.is_important === 0).map(p => p.name).join(', ') || 'Hakuna';
-    const totalQty = data.products.reduce((sum, p) => sum + p.quantity, 0);
+    // Profit Cards
+    if(data.profit){
+      periods.forEach(period => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<h3>Faida/Hasara (${period})</h3><p>Faida: TZS ${data.profit[period.toLowerCase()]?.toLocaleString() || 0}</p>`;
+        container.appendChild(div);
+      });
+    }
+
+    // ------------------- STOCK CARDS -------------------
+    const products = data.products || [];
+    const lowStock = products.filter(p => p.stock <= (p.min_stock || 0)).map(p => p.name).join(', ') || 'Hakuna';
+    const important = products.filter(p => p.is_important == 1).map(p => p.name).join(', ') || 'Hakuna';
+    const nonImportant = products.filter(p => p.is_important == 0).map(p => p.name).join(', ') || 'Hakuna';
+    const totalQty = products.reduce((sum, p) => sum + (p.stock || 0), 0);
 
     const stockCards = [
       { title: 'Bidhaa Zilizopungua', value: lowStock },
@@ -256,14 +105,63 @@ async function loadDashboardCards() {
       container.appendChild(div);
     });
 
+    // ------------------- TABLE -------------------
+    const table = document.getElementById('productsTable');
+    // Clear old rows except header
+    table.querySelectorAll('tr:not(:first-child)').forEach(r => r.remove());
+
+    products.forEach(p => {
+      const status = p.stock <= (p.min_stock || 0) ? 'Pungufu' : 'Muhimu';
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.stock}</td>
+        <td>TZS ${parseFloat(p.cost_price).toLocaleString()}</td>
+        <td>TZS ${parseFloat(p.sell_price).toLocaleString()}</td>
+        <td>${status}</td>
+      `;
+      table.appendChild(row);
+    });
+
+    // ------------------- CHARTS -------------------
+    if(document.getElementById('salesChart')){
+      new Chart(document.getElementById('salesChart'), {
+        type: 'line',
+        data: {
+          labels: periods,
+          datasets: [{
+            label: 'Mauzo (TZS)',
+            data: periods.map(p => data.sales?.[p.toLowerCase()] || 0),
+            borderColor: 'blue',
+            fill: false
+          }]
+        }
+      });
+    }
+
+    if(document.getElementById('productsChart')){
+      new Chart(document.getElementById('productsChart'), {
+        type: 'bar',
+        data: {
+          labels: products.map(p => p.name),
+          datasets: [{
+            label: 'Idadi ya Bidhaa',
+            data: products.map(p => p.stock),
+            backgroundColor: ['red','green','orange','gray','purple']
+          }]
+        }
+      });
+    }
+
   } catch (err) {
-    console.error('Error loading dashboard cards:', err);
+    console.error('Error loading dashboard:', err);
   }
 }
 
-// Load automatically
-loadDashboardCards();
+// Load dashboard automatically
+loadDashboard();
 </script>
+
 
 
 </body>
