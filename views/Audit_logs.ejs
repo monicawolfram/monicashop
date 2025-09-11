@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audit Logs / Activity Tracking</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+    .card { margin-bottom: 20px; }
+    table th, table td { vertical-align: middle; }
+    .status-success { color: #28a745; font-weight: bold; }
+    .status-failed { color: #dc3545; font-weight: bold; }
+    .status-warning { color: #ffc107; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h2><i class="bi bi-shield-check"></i> Audit Logs / Activity Tracking</h2>
+  </header>
+
+  <div class="container mt-4">
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+          <div class="card-body">
+            <h5>Total Actions</h5>
+            <p id="totalActions" class="fs-4">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+          <div class="card-body">
+            <h5>Actions Today</h5>
+            <p id="actionsToday" class="fs-4">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+          <div class="card-body">
+            <h5>Failed Actions</h5>
+            <p id="failedActions" class="fs-4 text-danger">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+          <div class="card-body">
+            <h5>Overdue / Warning</h5>
+            <p id="warningActions" class="fs-4 text-warning">0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <input type="text" id="searchUser" class="form-control" placeholder="Search by user...">
+      </div>
+      <div class="col-md-3">
+        <select id="filterType" class="form-select">
+          <option value="">All Action Types</option>
+          <option value="Product Management">Product Management</option>
+          <option value="Sales">Sales</option>
+          <option value="Settings">Settings</option>
+          <option value="Login/Logout">Login/Logout</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="date" id="filterDate" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <button id="resetFilters" class="btn btn-secondary w-100"><i class="bi bi-arrow-counterclockwise"></i> Reset Filters</button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mb-3">
+      <button class="btn btn-primary me-2" onclick="addLogEntry()">Add Log Entry</button>
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead class="table-dark">
+              <tr>
+                <th>Date & Time</th>
+                <th>User</th>
+                <th>Action Type</th>
+                <th>Action</th>
+                <th>Status</th>
+                <th>IP Address</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsTable">
+              <!-- dynamic rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+ <script>
+  // Start with empty audit logs
+  let auditLogs = [];
+
+  function renderLogs() {
+    const tbody = document.getElementById("auditLogsTable");
+    tbody.innerHTML = "";
+
+    let total = auditLogs.length;
+    const today = new Date().toISOString().slice(0,10);
+    let actionsToday = 0, failed = 0, warning = 0;
+
+    auditLogs.forEach((log, index) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${log.date}</td>
+        <td>${log.user}</td>
+        <td>${log.type}</td>
+        <td>${log.action}</td>
+        <td class="status-${log.status.toLowerCase()}">${log.status}</td>
+        <td>${log.ip}</td>
+        <td>${log.notes || ""}</td>
+        <td>
+          <button class="btn btn-sm btn-warning me-1" onclick="editLog(${index})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteLog(${index})">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+
+      // summary counts
+      if (log.date.startsWith(today)) actionsToday++;
+      if (log.status.toLowerCase() === "failed") failed++;
+      if (log.status.toLowerCase() === "warning") warning++;
+    });
+
+    document.getElementById("totalActions").textContent = total;
+    document.getElementById("actionsToday").textContent = actionsToday;
+    document.getElementById("failedActions").textContent = failed;
+    document.getElementById("warningActions").textContent = warning;
+
+    filterTable();
+  }
+
+  function addLogEntry(user, type, action, status, ip, notes = "") {
+    const date = new Date().toISOString().slice(0,16).replace("T"," ");
+    if(user && type && action && status && ip){
+      auditLogs.unshift({date, user, type, action, status, ip, notes});
+      renderLogs();
+    }
+  }
+
+  function editLog(index) {
+    const log = auditLogs[index];
+    const user = prompt("User:", log.user);
+    const type = prompt("Action Type:", log.type);
+    const action = prompt("Action:", log.action);
+    const status = prompt("Status (Success/Failed/Warning):", log.status);
+    const ip = prompt("IP Address:", log.ip);
+    const notes = prompt("Notes:", log.notes);
+    const date = prompt("Date & Time:", log.date);
+
+    if(user && type && action && status && ip && date){
+      auditLogs[index] = {date, user, type, action, status, ip, notes};
+      renderLogs();
+    }
+  }
+
+  function deleteLog(index) {
+    if(confirm("Delete this log entry?")){
+      auditLogs.splice(index,1);
+      renderLogs();
+    }
+  }
+
+  // Filtering
+  const searchInput = document.getElementById("searchUser");
+  const filterType = document.getElementById("filterType");
+  const filterDate = document.getElementById("filterDate");
+  const resetBtn = document.getElementById("resetFilters");
+
+  function filterTable() {
+    const search = searchInput.value.toLowerCase();
+    const type = filterType.value.toLowerCase();
+    const date = filterDate.value;
+
+    Array.from(document.getElementById("auditLogsTable").rows).forEach(row => {
+      const user = row.cells[1].textContent.toLowerCase();
+      const actionType = row.cells[2].textContent.toLowerCase();
+      const rowDate = row.cells[0].textContent.split(' ')[0];
+
+      if ((user.includes(search) || search === "") &&
+          (actionType.includes(type) || type === "") &&
+          (rowDate === date || date === "")) {
+        row.style.display = "";
+      } else row.style.display = "none";
+    });
+  }
+
+  searchInput.addEventListener("input", filterTable);
+  filterType.addEventListener("change", filterTable);
+  filterDate.addEventListener("change", filterTable);
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    filterType.value = "";
+    filterDate.value = "";
+    filterTable();
+  });
+
+  // Initial render
+  renderLogs();
+</script>
+
+
+</body>
+</html>

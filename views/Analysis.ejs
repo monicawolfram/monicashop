@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Analysis Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial, sans-serif; background:#f4f6f9; margin:0; padding:0; }
+header { background:#2c3e50; color:#fff; padding:15px; text-align:center; }
+.container { padding: 20px; }
+.card { background:#fff; padding:15px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+h2, h3 { margin: 5px 0 15px; }
+.grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:20px; }
+.stat { background:#f9fbff; text-align:center; padding:10px; border-radius:6px; }
+.stat h2 { margin:0; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { border:1px solid #eee; padding:8px; text-align:center; font-size:14px; }
+th { background:#f7f9fc; }
+.low-stock { color:red; font-weight:bold; }
+.essential { background:#e6f7ff; }
+.non-essential { background:#fff3e6; }
+.filter { margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Analysis Dashboard</h1>
+</header>
+
+<div class="container">
+
+  <!-- Summary Stats -->
+  <div class="grid4">
+    <div class="stat"><h2 id="totalProducts">0</h2><small>Total Products</small></div>
+    <div class="stat"><h2 id="essentialCount">0</h2><small>Essential Products</small></div>
+    <div class="stat"><h2 id="lowStockCount">0</h2><small>Low Stock Products</small></div>
+    <div class="stat"><h2 id="totalStockValue">0</h2><small>Total Stock Value</small></div>
+  </div>
+
+  <!-- Product Tables -->
+  <div class="card">
+    <h3>Essential Products</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Name</th><th>Stock</th><th>Cost Price</th><th>Sell Price</th><th>Total Value</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="essentialBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Non-Essential Products</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Name</th><th>Stock</th><th>Cost Price</th><th>Sell Price</th><th>Total Value</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="nonEssentialBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts with Filters -->
+  <div class="card">
+    <h3>Top Sold vs Unsold Products</h3>
+    <canvas id="topProductsChart" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Sales Over Time</h3>
+    <div class="filter">
+      <label for="salesFilter">Filter by:</label>
+      <select id="salesFilter">
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+        <option value="year">This Year</option>
+      </select>
+    </div>
+    <canvas id="salesChart" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Profit & Loss</h3>
+    <div class="filter">
+      <label for="profitFilter">Filter by:</label>
+      <select id="profitFilter">
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+        <option value="year" selected>This Year</option>
+      </select>
+    </div>
+    <canvas id="profitChart" height="120"></canvas>
+  </div>
+
+</div>
+
+<script>
+let topProductsChart, salesChart, profitChart;
+
+async function fetchProducts() {
+  try {
+    const res = await fetch('/product-summary');
+    const json = await res.json();
+    return json.success ? json.products : [];
+  } catch(err){ console.error(err); return []; }
+}
+
+async function fetchSales() {
+  try {
+    const res = await fetch('/profit-loss');
+    const json = await res.json();
+    return json.success ? json.data : [];
+  } catch(err){ console.error(err); return []; }
+}
+
+// Filter helper
+function filterSalesByPeriod(sales, period) {
+  const now = new Date();
+  return sales.filter(s => {
+    const d = new Date(s.summary_date);
+    if(period==='week'){
+      const weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay());
+      return d >= weekStart && d <= now;
+    } else if(period==='month'){
+      return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    } else {
+      return d.getFullYear()===now.getFullYear();
+    }
+  });
+}
+
+async function updateDashboard() {
+  const products = await fetchProducts();
+  const sales = await fetchSales();
+
+  // --- Summary Stats ---
+  let totalProducts = products.length;
+  let lowStockCount = 0;
+  let totalStockValue = 0;
+  let essentialCount = 0;
+
+  const essentialBody = document.getElementById('essentialBody');
+  const nonEssentialBody = document.getElementById('nonEssentialBody');
+  essentialBody.innerHTML = '';
+  nonEssentialBody.innerHTML = '';
+
+  products.forEach(p => {
+    const totalValue = p.stock * p.cost_price;
+    totalStockValue += totalValue;
+    const low_stock = p.stock <= (p.low_stock_threshold || 10);
+    if(low_stock) lowStockCount++;
+    if(p.essential) essentialCount++;
+
+    const row = `
+      <tr class="${p.essential ? 'essential' : 'non-essential'}">
+        <td>${p.category}</td>
+        <td>${p.name}</td>
+        <td>${p.stock}</td>
+        <td>${p.cost_price.toFixed(2)}</td>
+        <td>${p.sell_price.toFixed(2)}</td>
+        <td>${totalValue.toFixed(2)}</td>
+        <td class="${low_stock ? 'low-stock' : ''}">${low_stock ? 'Low' : 'OK'}</td>
+      </tr>`;
+    if(p.essential) essentialBody.innerHTML += row;
+    else nonEssentialBody.innerHTML += row;
+  });
+
+  document.getElementById('totalProducts').textContent = totalProducts;
+  document.getElementById('lowStockCount').textContent = lowStockCount;
+  document.getElementById('totalStockValue').textContent = totalStockValue.toFixed(2);
+  document.getElementById('essentialCount').textContent = essentialCount;
+
+  // --- Top Sold vs Unsold Products ---
+  const sortedSold = [...products].sort((a,b)=>b.sold-a.sold).slice(0,10);
+  const sortedUnsold = [...products].sort((a,b)=>b.stock-a.stock).slice(0,10);
+
+  if(topProductsChart) topProductsChart.destroy();
+  topProductsChart = new Chart(document.getElementById('topProductsChart'), {
+    type:'bar',
+    data:{
+      labels: sortedSold.map(p=>p.name),
+      datasets:[
+        {label:'Sold', data: sortedSold.map(p=>p.sold), backgroundColor:'green'},
+        {label:'Unsold', data: sortedUnsold.map(p=>p.stock), backgroundColor:'red'}
+      ]
+    }
+  });
+
+  // --- Sales Over Time ---
+  const salesPeriod = filterSalesByPeriod(sales, document.getElementById('salesFilter').value);
+  const salesByDate = salesPeriod.reduce((acc, s)=>{
+    if(!acc[s.summary_date]) acc[s.summary_date]={sales:0};
+    acc[s.summary_date].sales += s.sell_price*s.quantity;
+    return acc;
+  }, {});
+  const dates = Object.keys(salesByDate);
+  const salesValues = dates.map(d=>salesByDate[d].sales);
+
+  if(salesChart) salesChart.destroy();
+  salesChart = new Chart(document.getElementById('salesChart'), {
+    type:'line',
+    data:{ labels:dates, datasets:[{label:'Sales', data:salesValues, borderColor:'blue', fill:false}] }
+  });
+
+  // --- Profit & Loss ---
+  const profitPeriod = filterSalesByPeriod(sales, document.getElementById('profitFilter').value);
+  let totalProfit=0, totalLoss=0;
+  profitPeriod.forEach(s=>{
+    const profit = (s.sell_price - s.cost_price)*s.quantity;
+    if(profit>=0) totalProfit+=profit;
+    else totalLoss+=Math.abs(profit);
+  });
+
+  if(profitChart) profitChart.destroy();
+  profitChart = new Chart(document.getElementById('profitChart'), {
+    type:'pie',
+    data:{
+      labels:['Profit','Loss'],
+      datasets:[{data:[totalProfit,totalLoss], backgroundColor:['green','red'] }]
+    }
+  });
+
+}
+
+// Initial load
+updateDashboard();
+setInterval(updateDashboard, 15000); // refresh every 15s
+
+// Filter change events
+document.getElementById('salesFilter').addEventListener('change', updateDashboard);
+document.getElementById('profitFilter').addEventListener('change', updateDashboard);
+</script>
+
+</body>
+</html>

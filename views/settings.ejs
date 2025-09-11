@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shop Settings Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    header { background: #2c3e50; color: #fff; padding: 15px; text-align: center; }
+    .card { margin-bottom: 20px; cursor: pointer; transition: transform 0.2s; }
+    .card:hover { transform: scale(1.02); }
+    .card-body ul { padding-left: 1rem; }
+    .card-body ul li { padding: 5px 0; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h2 id="title">⚙ Settings / Mipangilio</h2>
+  </header>
+
+  <div class="container mt-4">
+    <!-- Language Switch -->
+    <div class="text-end mb-3">
+      <select id="language" class="form-select w-auto d-inline">
+        <option value="en">English</option>
+        <option value="sw">Kiswahili</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <!-- Settings Cards -->
+      <div class="col-md-6" data-link="/settings/general">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="General Business Settings" data-sw="Mipangilio ya Biashara">General Business Settings</h5>
+            <ul>
+              <li data-en="Business Name" data-sw="Jina la Biashara">Business Name</li>
+              <li data-en="Business Logo" data-sw="Logo ya Biashara">Business Logo</li>
+              <li data-en="Contact (Email, Phone)" data-sw="Mawasiliano (Barua pepe, Simu)">Contact</li>
+              <li data-en="Location / Address" data-sw="Mahali / Anwani">Location</li>
+              <li data-en="Currency" data-sw="Sarafu">Currency</li>
+              <li data-en="Tax & VAT Rate" data-sw="Kodi & Kiwango cha VAT">Tax & VAT</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/account">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="User Account Settings" data-sw="Mipangilio ya Akaunti">User Account Settings</h5>
+            <ul>
+              <li data-en="Seller Name (Profile Info)" data-sw="Jina la Muuzaji (Taarifa za Profaili)">Seller Name</li>
+              <li data-en="Change Password" data-sw="Badilisha Nenosiri">Change Password</li>
+              <li data-en="Enable 2FA (Two-Factor Authentication)" data-sw="Washa 2FA (Uthibitisho wa Hatua Mbili)">Enable 2FA</li>
+              <li data-en="Account Activity Log" data-sw="Kumbukumbu ya Shughuli za Akaunti">Activity Log</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/notifications">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="Notifications Settings" data-sw="Mipangilio ya Arifa">Notifications Settings</h5>
+            <ul>
+              <li data-en="Stock threshold alerts" data-sw="Arifa za kiwango cha chini cha bidhaa">Stock Alerts</li>
+              <li data-en="Expiry alerts (30 days before)" data-sw="Arifa za kuisha muda (siku 30 kabla)">Expiry Alerts</li>
+              <li data-en="System backup / login alerts" data-sw="Arifa za Backup / Kuingia">System Alerts</li>
+              <li data-en="Enable / disable specific alerts" data-sw="Washa / Zima aina fulani ya arifa">Custom Alerts</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/sales-reports">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="Sales & Reports Settings" data-sw="Mipangilio ya Mauzo na Ripoti">Sales & Reports</h5>
+            <ul>
+              <li data-en="Daily / Weekly / Monthly Targets" data-sw="Malengo ya Kila siku / Wiki / Mwezi">Sales Targets</li>
+              <li data-en="Reports format (PDF/Excel)" data-sw="Aina ya Ripoti (PDF/Excel)">Reports Format</li>
+              <li data-en="Export preferences" data-sw="Chaguo za Kuhifadhi Ripoti">Export Preferences</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/expenses-suppliers">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="Expenses & Supplier Settings" data-sw="Mipangilio ya Gharama na Wasambazaji">Expenses & Suppliers</h5>
+            <ul>
+              <li data-en="Expense categories" data-sw="Makundi ya gharama">Expense Categories</li>
+              <li data-en="Supplier payment terms" data-sw="Masharti ya malipo ya wasambazaji">Supplier Terms</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/system">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="System Settings" data-sw="Mipangilio ya Mfumo">System Settings</h5>
+            <ul>
+              <li data-en="Backup & Restore" data-sw="Backup na Kurudisha">Backup</li>
+              <li data-en="Data retention" data-sw="Muda wa kuhifadhi data">Data Retention</li>
+              <li data-en="Dark / Light mode" data-sw="Mandhari Meusi / Meupe">Theme Mode</li>
+              <li data-en="Language Preference" data-sw="Chaguo la Lugha">Language</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6" data-link="/settings/security">
+        <div class="card shadow-sm clickable-card">
+          <div class="card-body">
+            <h5 class="card-title" data-en="Security Settings" data-sw="Mipangilio ya Usalama">Security Settings</h5>
+            <ul>
+              <li data-en="Change PIN or Password" data-sw="Badilisha PIN au Nenosiri">Change PIN</li>
+              <li data-en="Roles & Permissions (if staff)" data-sw="Viwango vya Upatikanaji (kama kuna wafanyakazi)">Roles</li>
+              <li data-en="View login history" data-sw="Angalia Historia ya Kuingia">Login History</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Language Switch & Clickable Cards Script -->
+  <script>
+    // Language switch
+    const langSelect = document.getElementById("language");
+    langSelect.addEventListener("change", () => {
+      const lang = langSelect.value;
+      document.querySelectorAll("[data-en]").forEach(el => {
+        el.innerText = el.getAttribute(`data-${lang}`);
+      });
+    });
+
+    const savedLang = localStorage.getItem("shopLang") || "en";
+    langSelect.value = savedLang;
+    langSelect.dispatchEvent(new Event("change"));
+
+    langSelect.addEventListener("change", () => {
+      localStorage.setItem("shopLang", langSelect.value);
+    });
+
+    // Make entire card clickable
+    document.querySelectorAll(".clickable-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const parentCol = card.closest(".col-md-6");
+        const link = parentCol.getAttribute("data-link");
+        if(link) window.location.href = link; // Navigate to settings page
+      });
+    });
+  </script>
+</body>
+</html>

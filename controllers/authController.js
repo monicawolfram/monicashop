@@ -339,56 +339,27 @@ exports.addSale = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error adding sale' });
     }
 };
-
-
 exports.getPL = async (req, res) => {
   try {
-    // Fetch sales
-    const [salesRows] = await db.execute(`
-      SELECT id, fullname, product_name, quantity, sell_price, cost_price, date,
-             quantity*sell_price AS sales,
-             quantity*cost_price AS expenses,
-             (quantity*sell_price - quantity*cost_price) AS profit
+    const [rows] = await db.execute(`
+      SELECT id, summary_date AS date, fullname, product_name, quantity, sell_price, cost_price, profit
       FROM profit_loss_summary
-      ORDER BY date ASC
+      ORDER BY summary_date ASC
     `);
 
-    
-
-    // Combine by date
-    const allData = {};
-
-    salesRows.forEach(s => {
-      if (!allData[s.date]) allData[s.date] = { date: s.date, sales: 0, expenses: 0, profit: 0, transactions: [] };
-      allData[s.date].sales += s.sales;
-      allData[s.date].expenses += s.expenses;
-      allData[s.date].profit += s.profit;
-      allData[s.date].transactions.push(s);
-    });
-
-    expenseRows.forEach(e => {
-      if (!allData[e.date]) allData[e.date] = { date: e.date, sales: 0, expenses: 0, profit: 0, transactions: [] };
-      allData[e.date].expenses += e.expenses;
-      allData[e.date].profit += e.profit;
-      allData[e.date].transactions.push(e);
-    });
-
-    const result = Object.values(allData).sort((a,b)=>new Date(a.date)-new Date(b.date));
-
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: rows });
   } catch (err) {
     console.error("Error fetching P&L:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-// Controller: addSale
 exports.addSale = async (req, res) => {
   try {
     const { fullname, product_name, quantity, date } = req.body;
 
-    // 1. Get product prices from the products table
+    // Get product prices
     const [productRows] = await db.execute(
-      'SELECT sell_price, cost_price FROM products WHERE name = ? ',
+      'SELECT sell_price, cost_price FROM products WHERE name = ? LIMIT 1',
       [product_name]
     );
 
@@ -397,55 +368,60 @@ exports.addSale = async (req, res) => {
     }
 
     const { sell_price, cost_price } = productRows[0];
-    const profit = (sell_price - cost_price) * quantity;
+    const totalSales = sell_price * quantity;
+    const totalExpenses = cost_price * quantity;
+    const profit = totalSales - totalExpenses;
 
-    // 2. Insert sale record into sales table
+    // Insert sale into profit_loss_summary (one row per sale)
     await db.execute(
-      'INSERT INTO sales (fullname,  quantity,  date) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [fullname,  quantity,  date]
+      `INSERT INTO profit_loss_summary 
+       (summary_date, fullname, product_name, quantity, sell_price, cost_price, profit, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [date, fullname, product_name, quantity, sell_price, cost_price, profit]
     );
 
-    // 3. Update profit_loss_summary table
-    const [summaryRows] = await db.execute(
-      'SELECT * FROM profit_loss_summary WHERE summary_date = ? ',
-      [date]
-    );
-
-    if (summaryRows.length > 0) {
-      // Update existing summary
-      await db.execute(
-        'UPDATE profit_loss_summary SET total_sales = total_sales + ?, total_expenses = total_expenses + ?, profit = profit + ? WHERE summary_date = ?',
-        [sell_price * quantity, cost_price * quantity, profit, date]
-      );
-    } else {
-      // Insert new summary
-      await db.execute(
-        'INSERT INTO profit_loss_summary (summary_date, total_sales, total_expenses, profit, created_at) VALUES (?, ?, ?, ?, NOW())',
-        [date, sell_price * quantity, cost_price * quantity, profit]
-      );
-    }
-
-    res.json({ success: true });
+    res.json({ success: true, message: "Sale recorded successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Error in addSale:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
 exports.addExpense = async (req, res) => {
   try {
     const { description, amount, date } = req.body;
+
+    // 1. Insert expense into the expenses table
     await db.execute(
-      'INSERT INTO expenses (description, amount, date) VALUES (?, ?, ?)',
+      `INSERT INTO expenses
+       (description, amount, date, created_at)
+       VALUES (?, ?, ?, NOW())`,
       [description, amount, date]
     );
-    res.json({ success: true });
+
+    res.json({ success: true, message: "Expense recorded successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Error in addExpense:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+exports.getStockStatus = async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT id, name, description, image, category, cost_price, sell_price, stock, sold, created_at, updated_at
+      FROM products
+      ORDER BY category, name
+    `);
+
+    res.json({ success: true, products: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+
+
 
 
 
@@ -486,4 +462,22 @@ exports.getSales = (req, res) => {
 } ;
 exports.getProfiteLoss = (req, res) => {
   res.render("profite_loss");
+} ;
+exports.getStockStatus = (req, res) => {
+  res.render("Stock_status");
+} ;
+exports.getAnalysis = (req, res) => {
+  res.render("Analysis");
+} ;
+exports.getNotification = (req, res) => {
+  res.render("notification");
+} ;
+exports.getSettings = (req, res) => {
+  res.render("settings");
+} ;
+exports.getDebits = (req, res) => {
+  res.render("Debits");
+} ;
+exports.getAuditLogs = (req, res) => {
+  res.render("Audit_logs");
 } ;

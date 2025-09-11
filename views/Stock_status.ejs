@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stock Status Dashboard</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f6f9; margin:0; }
+header { background:#2c3e50; color:#fff; padding:14px 20px; text-align:center; }
+.wrap { display:flex; gap:20px; flex-wrap: wrap; padding:18px; }
+.card { background:#fff; padding:14px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:18px; flex:1; min-width:200px; text-align:center; }
+table { width:100%; border-collapse:collapse; margin-top:12px; }
+th, td { padding:8px; border-bottom:1px solid #eee; text-align:center; font-size:14px; }
+th { background:#f7f9fc; }
+.low-stock { color:red; font-weight:bold; }
+.essential { background:#e8f5e9; } /* light green */
+.non-essential { background:#fff3e0; } /* light orange */
+a { text-decoration:none; color:#2d89ff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Stock Status Dashboard</h1>
+
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2 id="totalProducts">0</h2>
+    <small>Total Products</small>
+  </div>
+  <div class="card">
+    <h2 id="lowStockCount">0</h2>
+    <small>Low Stock Items</small>
+  </div>
+  <div class="card">
+    <h2 id="totalStockValue">0.00</h2>
+    <small>Total Stock Value</small>
+  </div>
+  <div class="card">
+    <h2 id="essentialCount">0</h2>
+    <small>Essential Products</small>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Essential Products</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Name</th>
+        <th>Stock</th>
+        <th>Cost Price</th>
+        <th>Sell Price</th>
+        <th>Total Value</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="essentialBody"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Non-Essential Products</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Name</th>
+        <th>Stock</th>
+        <th>Cost Price</th>
+        <th>Sell Price</th>
+        <th>Total Value</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="nonEssentialBody"></tbody>
+  </table>
+</div>
+
+<script>
+    async function fetchProducts() {
+  try {
+    const res = await fetch('/product-summary'); // Backend endpoint
+    const json = await res.json();
+    return json.success ? json.products : []; // <-- use 'products' not 'data'
+  } catch(err) {
+    console.error(err);
+    return [];
+  }
+}
+
+async function updateStockDashboard() {
+  const products = await fetchProducts();
+  const essentialBody = document.getElementById('essentialBody');
+  const nonEssentialBody = document.getElementById('nonEssentialBody');
+
+  essentialBody.innerHTML = '';
+  nonEssentialBody.innerHTML = '';
+
+  let totalProducts = products.length;
+  let lowStockCount = 0;
+  let totalStockValue = 0;
+  let essentialCount = 0;
+
+  products.forEach(p => {
+    const totalValue = p.stock * p.cost_price;
+    totalStockValue += totalValue;
+    const low_stock = p.stock <= (p.low_stock_threshold || 10); // compute low stock
+    if(low_stock) lowStockCount++;
+    if(p.essential) essentialCount++;
+
+    const row = `
+      <tr class="${p.essential ? 'essential' : 'non-essential'}">
+        <td>${p.category}</td>
+        <td>${p.name}</td>
+        <td>${p.stock}</td>
+        <td>${p.cost_price.toFixed(2)}</td>
+        <td>${p.sell_price.toFixed(2)}</td>
+        <td>${totalValue.toFixed(2)}</td>
+        <td class="${low_stock ? 'low-stock' : ''}">${low_stock ? 'Low' : 'OK'}</td>
+      </tr>
+    `;
+    if(p.essential) essentialBody.innerHTML += row;
+    else nonEssentialBody.innerHTML += row;
+  });
+
+  document.getElementById('totalProducts').textContent = totalProducts;
+  document.getElementById('lowStockCount').textContent = lowStockCount;
+  document.getElementById('totalStockValue').textContent = totalStockValue.toFixed(2);
+  document.getElementById('essentialCount').textContent = essentialCount;
+}
+
+// Initial load
+updateStockDashboard();
+
+// Auto-refresh every 10 seconds
+setInterval(updateStockDashboard, 10000);
+
+</script>
+
+</body>
+</html>

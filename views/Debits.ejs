@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Debts & Credits Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background: #f8f9fa; }
+  header { background: #2c3e50; color: #fff; padding: 15px; text-align: center; }
+  .card { margin-bottom: 20px; }
+  .table td, .table th { vertical-align: middle; }
+  .status-unpaid { color: #e74c3c; font-weight: bold; }
+  .status-overdue { color: #d35400; font-weight: bold; }
+  .status-partial { color: #f39c12; font-weight: bold; }
+  .status-paid { color: #27ae60; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h2>💳 Debts & Credits Dashboard</h2>
+</header>
+
+<div class="container mt-4">
+
+  <!-- Overview Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6>Total Debts</h6>
+          <h4 id="totalDebts">TZS 0</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6>Cleared Credits</h6>
+          <h4 id="clearedCredits">TZS 0</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6>Overdue Debts</h6>
+          <h4 id="overdueDebts">0</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6>Top Debtor</h6>
+          <h5 id="topDebtor">-</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table & Actions -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between mb-3">
+        <h5 class="card-title">Customer Debts</h5>
+        <div>
+          <button class="btn btn-primary me-2" onclick="openDebtModal()">Add New Debt</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Customer Name</th>
+              <th>Contact</th>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Total Debt</th>
+              <th>Payments Made</th>
+              <th>Balance</th>
+              <th>Issue Date</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="debtsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Debt Modal -->
+<div class="modal fade" id="debtModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Add Debt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="debtForm">
+          <input type="hidden" id="editIndex">
+          <div class="mb-2"><input type="text" class="form-control" id="customer" placeholder="Customer Name" required></div>
+          <div class="mb-2"><input type="text" class="form-control" id="contact" placeholder="Contact" required></div>
+          <div class="mb-2"><input type="text" class="form-control" id="product" placeholder="Product" required></div>
+          <div class="mb-2"><input type="text" class="form-control" id="quantity" placeholder="Quantity" required></div>
+          <div class="mb-2"><input type="number" class="form-control" id="price" placeholder="Price" required></div>
+          <div class="mb-2"><input type="date" class="form-control" id="issueDate" required></div>
+          <div class="mb-2"><input type="date" class="form-control" id="dueDate" required></div>
+          <div class="mb-2">
+            <select id="status" class="form-select">
+              <option value="Unpaid">Unpaid</option>
+              <option value="Partially Paid">Partially Paid</option>
+              <option value="Paid">Paid</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Record Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="paymentForm">
+          <input type="hidden" id="paymentIndex">
+          <div class="mb-2"><input type="number" class="form-control" id="paymentAmount" placeholder="Payment Amount" required></div>
+          <button type="submit" class="btn btn-success w-100">Record</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const debts = [];
+
+const debtModal = new bootstrap.Modal(document.getElementById('debtModal'));
+const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+
+function updateDashboard() {
+  const tbody = document.getElementById("debtsTableBody");
+  tbody.innerHTML = "";
+  let totalDebts = 0, clearedCredits = 0, overdueDebts = 0, topDebtor = "";
+  let maxBalance = 0;
+  const today = new Date();
+
+  debts.forEach((d, index) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${d.customer}</td>
+      <td>${d.contact}</td>
+      <td>${d.product}</td>
+      <td>${d.quantity}</td>
+      <td>${d.price.toLocaleString()}</td>
+      <td>${d.total.toLocaleString()}</td>
+      <td>${d.payments.toLocaleString()}</td>
+      <td>${d.balance.toLocaleString()}</td>
+      <td>${d.issueDate}</td>
+      <td>${d.dueDate}</td>
+      <td class="${statusClass(d.status)}">${d.status}</td>
+      <td>
+        <button class="btn btn-sm btn-warning" onclick="editDebt(${index})">Edit</button>
+        <button class="btn btn-sm btn-success" onclick="recordPaymentModal(${index})">Pay</button>
+        <button class="btn btn-sm btn-info" onclick="remindCustomer('${d.customer}')">Remind</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDebt(${index})">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+
+    totalDebts += d.total;
+    clearedCredits += d.payments;
+    if(d.balance > 0 && new Date(d.dueDate) < today) overdueDebts++;
+    if(d.balance > maxBalance) { maxBalance = d.balance; topDebtor = d.customer; }
+  });
+
+  document.getElementById("totalDebts").textContent = `TZS ${totalDebts.toLocaleString()}`;
+  document.getElementById("clearedCredits").textContent = `TZS ${clearedCredits.toLocaleString()}`;
+  document.getElementById("overdueDebts").textContent = overdueDebts;
+  document.getElementById("topDebtor").textContent = topDebtor || "-";
+}
+
+function statusClass(status){
+  switch(status){
+    case "Unpaid": return "status-unpaid";
+    case "Overdue": return "status-overdue";
+    case "Partially Paid": return "status-partial";
+    case "Paid": return "status-paid";
+    default: return "";
+  }
+}
+
+function openDebtModal(){
+  document.getElementById("debtForm").reset();
+  document.getElementById("editIndex").value = "";
+  document.getElementById("modalTitle").innerText = "Add Debt";
+  debtModal.show();
+}
+
+function editDebt(index){
+  const d = debts[index];
+  document.getElementById("customer").value = d.customer;
+  document.getElementById("contact").value = d.contact;
+  document.getElementById("product").value = d.product;
+  document.getElementById("quantity").value = d.quantity;
+  document.getElementById("price").value = d.price;
+  document.getElementById("issueDate").value = d.issueDate;
+  document.getElementById("dueDate").value = d.dueDate;
+  document.getElementById("status").value = d.status;
+  document.getElementById("editIndex").value = index;
+  document.getElementById("modalTitle").innerText = "Edit Debt";
+  debtModal.show();
+}
+
+document.getElementById("debtForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const index = document.getElementById("editIndex").value;
+  const quantityVal = parseFloat(document.getElementById("quantity").value) || 1;
+  const priceVal = parseFloat(document.getElementById("price").value) || 0;
+  const totalVal = quantityVal * priceVal;
+  const newDebt = {
+    customer: document.getElementById("customer").value,
+    contact: document.getElementById("contact").value,
+    product: document.getElementById("product").value,
+    quantity: document.getElementById("quantity").value,
+    price: priceVal,
+    total: totalVal,
+    payments: index !== "" ? debts[index].payments : 0,
+    balance: index !== "" ? totalVal - debts[index].payments : totalVal,
+    issueDate: document.getElementById("issueDate").value,
+    dueDate: document.getElementById("dueDate").value,
+    status: document.getElementById("status").value
+  };
+  if(index === "") debts.push(newDebt);
+  else debts[index] = newDebt;
+  debtModal.hide();
+  updateDashboard();
+});
+
+// Payment functions
+function recordPaymentModal(index){
+  document.getElementById("paymentForm").reset();
+  document.getElementById("paymentIndex").value = index;
+  paymentModal.show();
+}
+
+document.getElementById("paymentForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const index = document.getElementById("paymentIndex").value;
+  const amount = parseFloat(document.getElementById("paymentAmount").value) || 0;
+  if(amount <= 0){ alert("Invalid payment amount"); return; }
+  debts[index].payments += amount;
+  debts[index].balance = debts[index].total - debts[index].payments;
+  debts[index].status = debts[index].balance <= 0 ? "Paid" :
+                        debts[index].payments > 0 ? "Partially Paid" : "Unpaid";
+  paymentModal.hide();
+  updateDashboard();
+});
+
+function remindCustomer(name){ alert(`Send reminder to ${name}`); }
+function deleteDebt(index){ if(confirm("Delete this debt?")){ debts.splice(index,1); updateDashboard(); } }
+
+updateDashboard();
+</script>
+
+</body>
+</html>

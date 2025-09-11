@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>notification Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background-color: #f8f9fa; }
+    header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+    .card h5 { color: #2c3e50; }
+    .alert { font-size: 0.9rem; margin-bottom: 8px; }
+    table th, table td { font-size: 0.85rem; }
+    .low-stock { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><i class="bi bi-shop"></i>Dashboard</h1>
+</header>
+
+<div class="container mt-4">
+
+  <!-- Notifications -->
+  <h3>Notifications</h3>
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body" id="stock-alerts">
+          <h5 class="card-title"><i class="bi bi-box-seam"></i> Stock Alerts</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body" id="sales-alerts">
+          <h5 class="card-title"><i class="bi bi-cash-coin"></i> Sales Alerts</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body" id="profit-alerts">
+          <h5 class="card-title"><i class="bi bi-graph-up"></i> Profit & Loss Alerts</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Status -->
+  <h3>Stock Status</h3>
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <table class="table table-sm table-bordered bg-white shadow-sm">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Name</th>
+            <th>Stock</th>
+            <th>Cost Price</th>
+            <th>Sell Price</th>
+            <th>Total Value</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="stockBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm p-3">
+        <h5>Sales Overview</h5>
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm p-3">
+        <h5>Profit & Loss Overview</h5>
+        <canvas id="plChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------- Notifications ----------
+  function addNotification(sectionId, message, type="info") {
+    const cardBody = document.getElementById(sectionId);
+    if(!cardBody) return;
+    const div = document.createElement("div");
+    div.className = `alert alert-${type}`;
+    div.innerHTML = message;
+    cardBody.appendChild(div);
+  }
+
+  async function fetchNotifications() {
+    try {
+      const res = await fetch('/notifications'); // Your backend endpoint
+      const json = await res.json();
+      if(!json.success) return;
+
+      ["stock-alerts","sales-alerts","profit-alerts"].forEach(id => {
+        document.getElementById(id).querySelectorAll(".alert").forEach(a => a.remove());
+      });
+
+      json.data.forEach(n => addNotification(n.section, n.message, n.type));
+    } catch(err){ console.error(err); }
+  }
+
+  setInterval(fetchNotifications, 10000);
+  fetchNotifications();
+
+  // ---------- Stock Dashboard ----------
+  async function fetchProducts() {
+    try {
+      const res = await fetch('/product-summary'); // Backend endpoint
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch(err){ console.error(err); return []; }
+  }
+
+  async function updateStockDashboard() {
+    const products = await fetchProducts();
+    const tbody = document.getElementById('stockBody');
+    tbody.innerHTML = '';
+
+    products.forEach(p => {
+      const totalValue = p.stock * p.cost_price;
+      const row = `
+        <tr>
+          <td>${p.category}</td>
+          <td>${p.name}</td>
+          <td>${p.stock}</td>
+          <td>${p.cost_price.toFixed(2)}</td>
+          <td>${p.sell_price.toFixed(2)}</td>
+          <td>${totalValue.toFixed(2)}</td>
+          <td class="${p.low_stock ? 'low-stock' : ''}">${p.low_stock ? 'Low' : 'OK'}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+  }
+
+  setInterval(updateStockDashboard, 10000);
+  updateStockDashboard();
+
+  // ---------- Charts ----------
+  let salesChart, plChart;
+
+  async function fetchPLData() {
+    try {
+      const res = await fetch('/profit-loss'); // Backend endpoint for sales & expenses
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch(err){ console.error(err); return []; }
+  }
+
+  function aggregatePL(rows) {
+    const grouped = {};
+    rows.forEach(r => {
+      if(!grouped[r.date]) grouped[r.date] = { sales:0, expenses:0, profit:0 };
+      if(r.product_name) {
+        grouped[r.date].sales += r.sell_price*r.quantity;
+        grouped[r.date].profit += r.sell_price*r.quantity - r.cost_price*r.quantity;
+        grouped[r.date].expenses += r.cost_price*r.quantity;
+      } else if(r.amount) {
+        grouped[r.date].expenses += r.amount;
+        grouped[r.date].profit -= r.amount;
+      }
+    });
+    return Object.entries(grouped).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+  }
+
+  async function updateCharts() {
+    const rows = await fetchPLData();
+    const data = aggregatePL(rows);
+
+    const labels = data.map(d=>d[0]);
+    const salesData = data.map(d=>d[1].sales);
+    const expensesData = data.map(d=>d[1].expenses);
+    const profitData = data.map(d=>d[1].profit);
+
+    // Sales Chart
+    if(salesChart) salesChart.destroy();
+    const ctxSales = document.getElementById('salesChart').getContext('2d');
+    salesChart = new Chart(ctxSales, {
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'Sales', data:salesData, borderColor:'blue', fill:false},
+          {label:'Expenses', data:expensesData, borderColor:'red', fill:false}
+        ]
+      }
+    });
+
+    // Profit & Loss Chart
+    if(plChart) plChart.destroy();
+    const ctxPL = document.getElementById('plChart').getContext('2d');
+    plChart = new Chart(ctxPL, {
+      type:'pie',
+      data:{
+        labels:['Profit','Expenses'],
+        datasets:[{data:[profitData.reduce((a,b)=>a+b,0), expensesData.reduce((a,b)=>a+b,0)], backgroundColor:['green','red']}]
+      }
+    });
+  }
+
+  setInterval(updateCharts, 10000);
+  updateCharts();
+
+</script>
+</body>
+</html>
