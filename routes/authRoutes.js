@@ -41,10 +41,11 @@ router.get("/shop", authController.getShop);
 router.get('/shop', authController.getShopDashboard);
 
 router.get('/products', authController.getAllProducts);
+router.get('/products/:id', authController.getProductById);  
 router.post('/products', upload.single('image'), authController.addProduct);
 router.put('/products/:id', upload.single('image'), authController.updateProduct);
 router.delete('/products/:id', authController.deleteProduct);
-router.get('/products/:id', authController.getProductById);  // ✅ needed
+
 router.get('/sales', authController.getAllSales);
 router.post('/sales/add', authController.addSale);
 
@@ -54,7 +55,11 @@ router.post('/add-expense', authController.addExpense);
 
 router.get('/product-summary', authController.getStockStatus);
 
-
+router.get('/all', authController.getAllDebts);
+router.post('/add', authController.addDebt);
+router.put('/edit/:id', authController.editDebt);
+router.delete('/delete/:id', authController.deleteDebt);
+router.put('/payment/:id', authController.recordPayment);
 
 
 
@@ -75,4 +80,6 @@ router.get("/shop/notification", authController.getNotification);
 router.get("/shop/settings", authController.getSettings);
 router.get("/shop/Debits", authController.getDebits);
 router.get("/shop/Audit_logs", authController.getAuditLogs);
+
+router.get("/agent", authController.getAgents);
 module.exports = router;

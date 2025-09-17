@@ -94,7 +94,7 @@
 
 </div>
 
-<!-- Debt Modal -->
+<!-- Add/Edit Debt Modal -->
 <div class="modal fade" id="debtModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -104,14 +104,29 @@
       </div>
       <div class="modal-body">
         <form id="debtForm">
-          <input type="hidden" id="editIndex">
-          <div class="mb-2"><input type="text" class="form-control" id="customer" placeholder="Customer Name" required></div>
-          <div class="mb-2"><input type="text" class="form-control" id="contact" placeholder="Contact" required></div>
-          <div class="mb-2"><input type="text" class="form-control" id="product" placeholder="Product" required></div>
-          <div class="mb-2"><input type="text" class="form-control" id="quantity" placeholder="Quantity" required></div>
-          <div class="mb-2"><input type="number" class="form-control" id="price" placeholder="Price" required></div>
-          <div class="mb-2"><input type="date" class="form-control" id="issueDate" required></div>
-          <div class="mb-2"><input type="date" class="form-control" id="dueDate" required></div>
+          <!-- Correct hidden ID -->
+          <input type="hidden" id="editId">
+          <div class="mb-2">
+            <input type="text" class="form-control" id="customer" placeholder="Customer Name" required>
+          </div>
+          <div class="mb-2">
+            <input type="text" class="form-control" id="contact" placeholder="Contact" required>
+          </div>
+          <div class="mb-2">
+            <input type="text" class="form-control" id="product" placeholder="Product" required>
+          </div>
+          <div class="mb-2">
+            <input type="number" class="form-control" id="quantity" placeholder="Quantity" required>
+          </div>
+          <div class="mb-2">
+            <input type="number" class="form-control" id="price" placeholder="Price"  required>
+          </div>
+          <div class="mb-2">
+            <input type="date" class="form-control" id="issueDate" required>
+          </div>
+          <div class="mb-2">
+            <input type="date" class="form-control" id="dueDate" required>
+          </div>
           <div class="mb-2">
             <select id="status" class="form-select">
               <option value="Unpaid">Unpaid</option>
@@ -119,12 +134,13 @@
               <option value="Paid">Paid</option>
             </select>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Save</button>
+          <button type="submit" class="btn btn-primary w-100">Save Debt</button>
         </form>
       </div>
     </div>
   </div>
 </div>
+
 
 <!-- Payment Modal -->
 <div class="modal fade" id="paymentModal" tabindex="-1">
@@ -146,12 +162,28 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-const debts = [];
+let debts = [];
 
 const debtModal = new bootstrap.Modal(document.getElementById('debtModal'));
 const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
 
+// Fetch debts from backend
+async function fetchDebts() {
+  try {
+    const res = await fetch('/debts/all');
+    const json = await res.json();
+    debts = json.success ? json.data : [];
+    updateDashboard();
+  } catch(err) {
+    console.error("Error fetching debts:", err);
+    debts = [];
+    updateDashboard();
+  }
+}
+
+// Update dashboard table
 function updateDashboard() {
   const tbody = document.getElementById("debtsTableBody");
   tbody.innerHTML = "";
@@ -159,31 +191,31 @@ function updateDashboard() {
   let maxBalance = 0;
   const today = new Date();
 
-  debts.forEach((d, index) => {
+  debts.forEach(d => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${d.customer}</td>
       <td>${d.contact}</td>
       <td>${d.product}</td>
       <td>${d.quantity}</td>
-      <td>${d.price.toLocaleString()}</td>
-      <td>${d.total.toLocaleString()}</td>
-      <td>${d.payments.toLocaleString()}</td>
-      <td>${d.balance.toLocaleString()}</td>
-      <td>${d.issueDate}</td>
-      <td>${d.dueDate}</td>
+      <td>${(+d.price).toLocaleString()}</td>
+      <td>${(+d.total).toLocaleString()}</td>
+      <td>${(+d.payments).toLocaleString()}</td>
+      <td>${(+d.balance).toLocaleString()}</td>
+      <td>${d.issueDate?.slice(0,10) || ''}</td>
+      <td>${d.dueDate?.slice(0,10) || ''}</td>
       <td class="${statusClass(d.status)}">${d.status}</td>
       <td>
-        <button class="btn btn-sm btn-warning" onclick="editDebt(${index})">Edit</button>
-        <button class="btn btn-sm btn-success" onclick="recordPaymentModal(${index})">Pay</button>
+        <button class="btn btn-sm btn-warning" onclick="editDebt(${d.id})">Edit</button>
+        <button class="btn btn-sm btn-success" onclick="recordPaymentModal(${d.id})">Pay</button>
         <button class="btn btn-sm btn-info" onclick="remindCustomer('${d.customer}')">Remind</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteDebt(${index})">Delete</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDebt(${d.id})">Delete</button>
       </td>
     `;
     tbody.appendChild(row);
 
-    totalDebts += d.total;
-    clearedCredits += d.payments;
+    totalDebts += +d.total;
+    clearedCredits += +d.payments;
     if(d.balance > 0 && new Date(d.dueDate) < today) overdueDebts++;
     if(d.balance > maxBalance) { maxBalance = d.balance; topDebtor = d.customer; }
   });
@@ -194,6 +226,7 @@ function updateDashboard() {
   document.getElementById("topDebtor").textContent = topDebtor || "-";
 }
 
+// Status styling
 function statusClass(status){
   switch(status){
     case "Unpaid": return "status-unpaid";
@@ -204,78 +237,114 @@ function statusClass(status){
   }
 }
 
+// Open modal for adding debt
 function openDebtModal(){
   document.getElementById("debtForm").reset();
-  document.getElementById("editIndex").value = "";
+  document.getElementById("editId").value = "";
   document.getElementById("modalTitle").innerText = "Add Debt";
   debtModal.show();
 }
 
-function editDebt(index){
-  const d = debts[index];
+// Open modal for editing debt
+function editDebt(id){
+  const d = debts.find(x => x.id == id);
+  if(!d) return;
+
   document.getElementById("customer").value = d.customer;
   document.getElementById("contact").value = d.contact;
   document.getElementById("product").value = d.product;
   document.getElementById("quantity").value = d.quantity;
   document.getElementById("price").value = d.price;
-  document.getElementById("issueDate").value = d.issueDate;
-  document.getElementById("dueDate").value = d.dueDate;
+  document.getElementById("issueDate").value = d.issueDate?.slice(0,10);
+  document.getElementById("dueDate").value = d.dueDate?.slice(0,10);
   document.getElementById("status").value = d.status;
-  document.getElementById("editIndex").value = index;
+  document.getElementById("editId").value = id;
   document.getElementById("modalTitle").innerText = "Edit Debt";
   debtModal.show();
 }
 
-document.getElementById("debtForm").addEventListener("submit", function(e){
+// Add/Edit debt submit
+document.getElementById("debtForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const index = document.getElementById("editIndex").value;
-  const quantityVal = parseFloat(document.getElementById("quantity").value) || 1;
-  const priceVal = parseFloat(document.getElementById("price").value) || 0;
-  const totalVal = quantityVal * priceVal;
-  const newDebt = {
+  const id = document.getElementById("editId").value;
+  const payload = {
     customer: document.getElementById("customer").value,
     contact: document.getElementById("contact").value,
     product: document.getElementById("product").value,
-    quantity: document.getElementById("quantity").value,
-    price: priceVal,
-    total: totalVal,
-    payments: index !== "" ? debts[index].payments : 0,
-    balance: index !== "" ? totalVal - debts[index].payments : totalVal,
+    quantity: Number(document.getElementById("quantity").value) || 1,
+    price: Number(document.getElementById("price").value) || 0,
     issueDate: document.getElementById("issueDate").value,
     dueDate: document.getElementById("dueDate").value,
     status: document.getElementById("status").value
   };
-  if(index === "") debts.push(newDebt);
-  else debts[index] = newDebt;
-  debtModal.hide();
-  updateDashboard();
+
+  try {
+    const res = await fetch(id ? `/debts/edit/${id}` : '/debts/add', {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if(json.success){
+      debtModal.hide();
+      fetchDebts();
+      alert(json.message);
+    } else alert(json.message);
+  } catch(err){
+    console.error(err);
+    alert("Server error");
+  }
 });
 
-// Payment functions
-function recordPaymentModal(index){
+// Payment modal
+function recordPaymentModal(id){
   document.getElementById("paymentForm").reset();
-  document.getElementById("paymentIndex").value = index;
+  document.getElementById("paymentId").value = id;
   paymentModal.show();
 }
 
-document.getElementById("paymentForm").addEventListener("submit", function(e){
+// Record payment submit
+document.getElementById("paymentForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const index = document.getElementById("paymentIndex").value;
-  const amount = parseFloat(document.getElementById("paymentAmount").value) || 0;
+  const id = document.getElementById("paymentId").value;
+  const amount = Number(document.getElementById("paymentAmount").value) || 0;
   if(amount <= 0){ alert("Invalid payment amount"); return; }
-  debts[index].payments += amount;
-  debts[index].balance = debts[index].total - debts[index].payments;
-  debts[index].status = debts[index].balance <= 0 ? "Paid" :
-                        debts[index].payments > 0 ? "Partially Paid" : "Unpaid";
-  paymentModal.hide();
-  updateDashboard();
+
+  try {
+    const res = await fetch(`/debts/payment/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount })
+    });
+    const json = await res.json();
+    if(json.success){
+      paymentModal.hide();
+      fetchDebts();
+      alert(json.message);
+    } else alert(json.message);
+  } catch(err){ console.error(err); alert("Server error"); }
 });
 
-function remindCustomer(name){ alert(`Send reminder to ${name}`); }
-function deleteDebt(index){ if(confirm("Delete this debt?")){ debts.splice(index,1); updateDashboard(); } }
+// Delete debt
+async function deleteDebt(id){
+  if(!confirm("Delete this debt?")) return;
+  try {
+    const res = await fetch(`/debts/delete/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if(json.success){
+      fetchDebts();
+      alert(json.message);
+    } else alert(json.message);
+  } catch(err){ console.error(err); alert("Server error"); }
+}
 
-updateDashboard();
+// Send reminder
+function remindCustomer(name){ alert(`Send reminder to ${name}`); }
+
+// Initial load
+fetchDebts();
 </script>
+
 
 </body>
 </html>

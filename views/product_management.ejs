@@ -88,6 +88,7 @@
         <th>Bei ya Mauzo</th>
         <th>Idadi</th>
         <th>Maelezo</th>
+        <th>Hali</th>
         <th>Vitendo</th>
       </tr>
     </thead>
@@ -109,26 +110,32 @@ async function loadProducts() {
     const res = await fetch('/products');
     const data = await res.json();
     tableBody.innerHTML = '';
-    if(data.success){
+
+    if (data.success) {
       data.products.forEach((p) => {
         const status = p.stock <= 5 ? 'Pungufu' : 'Muhimu';
         const row = document.createElement('tr');
-        row.innerHTML = `  
-          <td>${p.image ? `<img src="${p.image}" alt="Picha">` : 'N/A'}</td>
+        row.innerHTML = `
+          <td>
+            ${p.image 
+              ? `<img src="${p.image}" alt="${p.name}" width="50" height="50" style="border-radius:50%; object-fit:cover;" />`
+              : 'N/A'}
+          </td>
           <td>${p.name}</td>
           <td>TZS ${parseFloat(p.cost_price).toLocaleString()}</td>
           <td>TZS ${parseFloat(p.sell_price).toLocaleString()}</td>
           <td>${p.stock}</td>
           <td>${p.description || ''}</td>
+          <td>${status}</td>
           <td>
-            <button onclick="editProduct(${p.id})">✏ Edit</button>
-            <button onclick="deleteProduct(${p.id})">🗑 Futa</button>
+            <button type="button" onclick="editProduct(${p.id})">✏ Edit</button>
+            <button type="button" onclick="deleteProduct(${p.id})">🗑 Futa</button>
           </td>
         `;
         tableBody.appendChild(row);
       });
     }
-  } catch(err){
+  } catch (err) {
     console.error('Error loading products:', err);
   }
 }
@@ -141,33 +148,31 @@ form.addEventListener('submit', async (e) => {
   try {
     let url = '/products';
     let method = 'POST';
-    if(editProductId){
+    if (editProductId) {
       url = `/products/${editProductId}`;
       method = 'PUT';
     }
 
-    const res = await fetch(url, {
-      method: method,
-      body: formData
-    });
+    const res = await fetch(url, { method, body: formData });
     const data = await res.json();
 
-    if(data.success){
+    if (data.success) {
       form.reset();
       editProductId = null; // Reset edit mode
-      loadProducts(); // refresh table
+      loadProducts(); // Refresh table
     } else {
-      alert('Error saving product');
+      alert(data.message || 'Error saving product');
     }
-  } catch(err){
-    console.error('Error:', err);
+  } catch (err) {
+    console.error('Error saving product:', err);
   }
 });
 
-// Edit product
+// Edit product by ID
 async function editProduct(id) {
   try {
     const res = await fetch(`/products/${id}`);
+    
     if (!res.ok) {
       alert('Product not found');
       return;
@@ -181,9 +186,14 @@ async function editProduct(id) {
       document.getElementById('sellingPrice').value = p.sell_price;
       document.getElementById('quantity').value = p.stock;
       document.getElementById('description').value = p.description || '';
-      editProductId = p.id; // Set form in edit mode
+      
+      // Optionally show existing image
+      const preview = document.getElementById('imagePreview');
+      if (preview) preview.src = p.image || '';
+      
+      editProductId = p.id; // Track product for update
     } else {
-      alert('Product not found');
+      alert(data.message || 'Product not found');
     }
   } catch (err) {
     console.error('Error fetching product:', err);
@@ -191,17 +201,18 @@ async function editProduct(id) {
   }
 }
 
-
-// Delete product
-async function deleteProduct(id){
-  if(!confirm('Una uhakika unataka kufuta bidhaa hii?')) return;
+// Delete product by ID
+async function deleteProduct(id) {
+  if (!confirm('Una uhakika unataka kufuta bidhaa hii?')) return;
   try {
     const res = await fetch(`/products/${id}`, { method: 'DELETE' });
     const data = await res.json();
-    if(data.success){
+    if (data.success) {
       loadProducts();
+    } else {
+      alert(data.message || 'Failed to delete product');
     }
-  } catch(err){
+  } catch (err) {
     console.error('Error deleting product:', err);
   }
 }
@@ -209,6 +220,8 @@ async function deleteProduct(id){
 // Load table on page load
 loadProducts();
 </script>
+
+
 
 
 </body>

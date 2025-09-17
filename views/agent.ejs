@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Agent Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; }
+    .sidebar { height: 100vh; background: #2c3e50; color: #fff; position: fixed; top: 0; left: 0; width: 250px; transition: width 0.3s; overflow-y: auto; }
+    .sidebar.collapsed { width: 70px; }
+    .sidebar .nav-link { color: #fff; padding: 15px 20px; display: flex; align-items: center; text-decoration: none; transition: background 0.2s; }
+    .sidebar .nav-link:hover { background: #34495e; }
+    .sidebar .nav-link i { margin-right: 10px; min-width: 20px; text-align: center; }
+    .sidebar.collapsed .nav-link span { display: none; }
+    .sidebar .nav-link.active { background: #1abc9c; }
+    .main-content { margin-left: 250px; transition: margin-left 0.3s; padding: 20px; }
+    .main-content.collapsed { margin-left: 70px; }
+    .top-navbar { height: 60px; background: #fff; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; padding: 0 20px; position: sticky; top: 0; z-index: 1000; }
+    .toggle-btn { cursor: pointer; font-size: 1.2rem; }
+    .lang-switch { margin-left: 15px; }
+    .notif-icon { margin-left: auto; position: relative; cursor: pointer; }
+    .notif-badge { position: absolute; top: -5px; right: -8px; background: red; color: #fff; font-size: 12px; border-radius: 50%; padding: 2px 6px; }
+    .card-small { padding: 15px; text-align: center; border-radius: 10px; color: #fff; }
+    .quick-actions button { margin: 5px; }
+    .table-responsive { max-height: 250px; overflow-y: auto; }
+    .progress { height: 20px; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h4 class="text-center py-3">Agent Panel</h4>
+    <ul class="nav flex-column">
+      <li><a href="/agent" class="nav-link active"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
+      <li><a href="/agent/transactions" class="nav-link"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a></li>
+      <li><a href="/agent/customer" class="nav-link"><i class="fas fa-users"></i> <span>Customers</span></a></li>
+      <li><a href="/agent/debts" class="nav-link"><i class="fas fa-hand-holding-usd"></i> <span>Debts/Credits</span></a></li>
+      <li><a href="/agent/Security" class="nav-link"><i class="fas fa-shield-alt"></i> <span>Security</span></a></li>
+      <li><a href="/agent/settings" class="nav-link"><i class="fas fa-cog"></i> <span>Settings</span></a></li>
+      <li><a href="/agent/logout" class="nav-link"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+<div class="main-content" id="main-content">
+  <div class="top-navbar">
+    <i class="fas fa-bars toggle-btn" id="toggleSidebar"></i>
+    <h5 class="ms-3 mb-0">Dashboard</h5>
+
+    <!-- Notifications -->
+    <div class="notif-icon">
+      <i class="fas fa-bell"></i>
+      <span class="notif-badge" id="notifCount">0</span>
+    </div>
+
+    <!-- Language -->
+    <select id="language" class="form-select w-auto d-inline ms-3 lang-switch">
+      <option value="en">English</option>
+      <option value="sw">Kiswahili</option>
+    </select>
+  </div>
+
+  <!-- Float & Performance Widgets by Network -->
+  <div class="row mt-4 g-3" id="networkWidgets">
+    <!-- Dynamic widgets injected here -->
+  </div>
+
+  <!-- Quick Action Buttons -->
+  <div class="quick-actions mt-4" id="quickActions">
+    <!-- Dynamic buttons injected here -->
+  </div>
+
+  <!-- Charts -->
+  <div class="card mt-4 shadow-sm">
+    <div class="card-body">
+      <h5>Performance Report</h5>
+      <canvas id="salesChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Target & Rewards -->
+  <div class="card mt-4 shadow-sm">
+    <div class="card-body">
+      <h5>Weekly Target</h5>
+      <p>Target: <span id="weeklyTarget">0</span> transactions</p>
+      <div class="progress">
+        <div class="progress-bar bg-success" id="targetProgress" style="width:0%">0/0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debts & Credits -->
+  <div class="card mt-4 shadow-sm">
+    <div class="card-body">
+      <h5>Debts & Credits</h5>
+      <div class="table-responsive">
+        <table class="table table-sm" id="debtsTable">
+          <thead><tr><th>Customer</th><th>Amount</th><th>Due Date</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security & Alerts -->
+  <div class="card mt-4 shadow-sm">
+    <div class="card-body">
+      <h5>Security Alerts</h5>
+      <ul id="securityAlerts"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.getElementById('main-content');
+  document.getElementById('toggleSidebar').addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('collapsed');
+  });
+
+  async function loadDashboard() {
+    try {
+      const res = await fetch('/api/dashboard');
+      const data = await res.json();
+
+      document.getElementById('notifCount').textContent = data.notifications.length;
+      document.getElementById('weeklyTarget').textContent = data.weeklyTarget;
+      const progress = Math.min((data.transactionsToday / data.weeklyTarget) * 100, 100);
+      document.getElementById('targetProgress').style.width = progress + '%';
+      document.getElementById('targetProgress').textContent = `${data.transactionsToday}/${data.weeklyTarget}`;
+
+      // Generate network widgets
+      const networkWidgets = document.getElementById('networkWidgets');
+      networkWidgets.innerHTML = '';
+      data.networks.forEach(net => {
+        networkWidgets.innerHTML += `
+          <div class="col-md-3">
+            <div class="card card-small shadow-sm" style="background:${net.color};">
+              <h6>${net.name} Float</h6>
+              <h3>TZS ${net.float.toLocaleString()}</h3>
+              <p>Transactions: ${net.transactions}</p>
+              <p>Commission: TZS ${net.commission.toLocaleString()}</p>
+              <p>Bills: ${net.billPayments}</p>
+            </div>
+          </div>
+        `;
+      });
+
+      // Generate quick-action buttons per network
+      const quickActions = document.getElementById('quickActions');
+      quickActions.innerHTML = '';
+      data.networks.forEach(net => {
+        quickActions.innerHTML += `
+          <button class="btn btn-success me-2 mb-2" onclick="cashIn('${net.name}')"><i class="fas fa-money-bill-wave"></i> Cash In (${net.name})</button>
+          <button class="btn btn-danger me-2 mb-2" onclick="cashOut('${net.name}')"><i class="fas fa-hand-holding-usd"></i> Cash Out (${net.name})</button>
+          <button class="btn btn-primary me-2 mb-2" onclick="payBill('${net.name}')"><i class="fas fa-file-invoice-dollar"></i> Pay Bills (${net.name})</button>
+          <button class="btn btn-warning me-2 mb-2" onclick="sellAirtime('${net.name}')"><i class="fas fa-mobile-alt"></i> Sell Airtime (${net.name})</button>
+        `;
+      });
+
+      // Debts table
+      const debtsBody = document.querySelector('#debtsTable tbody');
+      debtsBody.innerHTML = '';
+      data.debts.forEach(d => {
+        debtsBody.innerHTML += `<tr>
+          <td>${d.customer}</td>
+          <td>TZS ${d.amount.toLocaleString()}</td>
+          <td>${d.dueDate}</td>
+          <td><span class="badge bg-${d.status === 'Pending' ? 'warning' : 'success'}">${d.status}</span></td>
+        </tr>`;
+      });
+
+      // Security alerts
+      const alertsList = document.getElementById('securityAlerts');
+      alertsList.innerHTML = '';
+      data.securityAlerts.forEach(alert => {
+        alertsList.innerHTML += `<li>${alert}</li>`;
+      });
+
+      // Chart
+      const ctx = document.getElementById('salesChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.chart.labels,
+          datasets: [{
+            label: 'Transactions',
+            data: data.chart.transactions,
+            borderColor: '#1abc9c',
+            fill: false
+          },{
+            label: 'Commission',
+            data: data.chart.commission,
+            borderColor: '#3498db',
+            fill: false
+          }]
+        }
+      });
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+    }
+  }
+
+  // Quick action handlers
+  function cashIn(network){ alert(`Cash In clicked for ${network}`); }
+  function cashOut(network){ alert(`Cash Out clicked for ${network}`); }
+  function payBill(network){ alert(`Pay Bills clicked for ${network}`); }
+  function sellAirtime(network){ alert(`Sell Airtime clicked for ${network}`); }
+
+  loadDashboard();
+</script>

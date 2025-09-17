@@ -31,6 +31,7 @@
   <h3>📦 Orodha ya Bidhaa Zote</h3>
   <table id="productsTable">
     <tr>
+      <th>image</th>
       <th>Jina la Bidhaa</th>
       <th>Idadi</th>
       <th>Bei ya Manunuzi</th>
@@ -52,40 +53,70 @@
 <script>
 async function loadDashboard() {
   try {
-    // Fetch all dashboard data including products, sales, profit
-    const res = await fetch('/products'); // <-- backend endpoint for products
-    const data = await res.json();
+    // Fetch products
+    const resProducts = await fetch('/products'); 
+    const dataProducts = await resProducts.json();
+    const products = dataProducts.products || [];
 
-    if (!data.success) return;
+    // Fetch sales
+    const resSales = await fetch('/sales'); 
+    const dataSales = await resSales.json();
+    const sales = (dataSales.success && dataSales.sales) ? dataSales.sales : [];
+
+    // ------------------- SALES AGGREGATION -------------------
+    const now = new Date();
+    const salesTotals = { leo: 0, wiki: 0, mwezi: 0, mwaka: 0 };
+
+    sales.forEach(s => {
+      if (!s.quantity) return;
+      const d = new Date(s.date);
+      const qty = Number(s.quantity);
+
+      // Daily
+      if(d.toDateString() === now.toDateString()) salesTotals.leo += qty;
+      // Weekly
+      if(Math.floor((now - d)/(1000*60*60*24*7)) === 0) salesTotals.wiki += qty;
+      // Monthly
+      if(d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) salesTotals.mwezi += qty;
+      // Yearly
+      if(d.getFullYear() === now.getFullYear()) salesTotals.mwaka += qty;
+    });
 
     // ------------------- CARDS -------------------
     const container = document.getElementById('dashboardCards');
     container.innerHTML = '';
 
-    const periods = ['Leo', 'Wiki', 'Mwezi', 'Mwaka'];
-
     // Sales Cards
-    if(data.sales){
-      periods.forEach(period => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `<h3>Mauzo ya ${period}</h3><p>TZS ${data.sales[period.toLowerCase()]?.toLocaleString() || 0}</p>`;
-        container.appendChild(div);
-      });
-    }
+    ['Leo','Wiki','Mwezi','Mwaka'].forEach(period => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `<h3>Mauzo ya ${period}</h3><p>${salesTotals[period.toLowerCase()].toLocaleString()} units</p>`;
+      container.appendChild(div);
+    });
 
-    // Profit Cards
-    if(data.profit){
-      periods.forEach(period => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `<h3>Faida/Hasara (${period})</h3><p>Faida: TZS ${data.profit[period.toLowerCase()]?.toLocaleString() || 0}</p>`;
-        container.appendChild(div);
-      });
-    }
+    // Profit Cards (optional, example)
+    const profitTotals = { leo: 0, wiki: 0, mwezi: 0, mwaka: 0 };
+    // Calculate profit: (sell_price - cost_price) * quantity
+    sales.forEach(s => {
+      const product = products.find(p => p.name === s.fullname); // Or match by product ID if exists
+      if (!product || !s.quantity) return;
+      const d = new Date(s.date);
+      const profit = (product.sell_price - product.cost_price) * Number(s.quantity);
+
+      if(d.toDateString() === now.toDateString()) profitTotals.leo += profit;
+      if(Math.floor((now - d)/(1000*60*60*24*7)) === 0) profitTotals.wiki += profit;
+      if(d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) profitTotals.mwezi += profit;
+      if(d.getFullYear() === now.getFullYear()) profitTotals.mwaka += profit;
+    });
+
+    ['Leo','Wiki','Mwezi','Mwaka'].forEach(period => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `<h3>Faida/Hasara (${period})</h3><p>TZS ${profitTotals[period.toLowerCase()].toLocaleString()}</p>`;
+      container.appendChild(div);
+    });
 
     // ------------------- STOCK CARDS -------------------
-    const products = data.products || [];
     const lowStock = products.filter(p => p.stock <= (p.min_stock || 0)).map(p => p.name).join(', ') || 'Hakuna';
     const important = products.filter(p => p.is_important == 1).map(p => p.name).join(', ') || 'Hakuna';
     const nonImportant = products.filter(p => p.is_important == 0).map(p => p.name).join(', ') || 'Hakuna';
@@ -105,20 +136,25 @@ async function loadDashboard() {
       container.appendChild(div);
     });
 
-    // ------------------- TABLE -------------------
+    // ------------------- PRODUCTS TABLE -------------------
     const table = document.getElementById('productsTable');
-    // Clear old rows except header
     table.querySelectorAll('tr:not(:first-child)').forEach(r => r.remove());
-
     products.forEach(p => {
       const status = p.stock <= (p.min_stock || 0) ? 'Pungufu' : 'Muhimu';
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${p.name}</td>
-        <td>${p.stock}</td>
-        <td>TZS ${parseFloat(p.cost_price).toLocaleString()}</td>
-        <td>TZS ${parseFloat(p.sell_price).toLocaleString()}</td>
-        <td>${status}</td>
+       <td>
+         <img src="${p.image || 'https://via.placeholder.com/50'}" 
+              alt="${p.name}" 
+              width="50" 
+              height="50" 
+              style="border-radius:50%; object-fit:cover;"/>
+       </td>
+       <td>${p.name}</td>
+       <td>${p.stock}</td>
+       <td>TZS ${parseFloat(p.cost_price).toLocaleString()}</td>
+       <td>TZS ${parseFloat(p.sell_price).toLocaleString()}</td>
+       <td>${status}</td>
       `;
       table.appendChild(row);
     });
@@ -128,10 +164,10 @@ async function loadDashboard() {
       new Chart(document.getElementById('salesChart'), {
         type: 'line',
         data: {
-          labels: periods,
+          labels: ['Leo','Wiki','Mwezi','Mwaka'],
           datasets: [{
-            label: 'Mauzo (TZS)',
-            data: periods.map(p => data.sales?.[p.toLowerCase()] || 0),
+            label: 'Mauzo (Units)',
+            data: ['leo','wiki','mwezi','mwaka'].map(p => salesTotals[p]),
             borderColor: 'blue',
             fill: false
           }]
@@ -161,6 +197,7 @@ async function loadDashboard() {
 // Load dashboard automatically
 loadDashboard();
 </script>
+
 
 
 

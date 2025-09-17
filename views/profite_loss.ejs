@@ -118,181 +118,201 @@ function googleTranslateElementInit() {
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <script>
-  const quantityInput = document.getElementById('quantity');
-  const sellPriceInput = document.getElementById('sell_price');
-  const totalAmountInput = document.getElementById('total_amount');
+const quantityInput = document.getElementById('quantity');
+const sellPriceInput = document.getElementById('sell_price');
+const totalAmountInput = document.getElementById('total_amount');
 
-  // Auto-calc total
-  function updateTotalAmount() {
-    const qty = Number(quantityInput.value) || 0;
-    const price = Number(sellPriceInput.value) || 0;
-    totalAmountInput.value = (qty * price).toFixed(2);
+// Auto-calc total amount for sales
+function updateTotalAmount() {
+  const qty = Number(quantityInput.value) || 0;
+  const price = Number(sellPriceInput.value) || 0;
+  totalAmountInput.value = (qty * price).toFixed(2);
+}
+quantityInput.addEventListener('input', updateTotalAmount);
+sellPriceInput.addEventListener('input', updateTotalAmount);
+
+// Fetch all sales and expenses
+async function fetchData() {
+  try {
+    const res = await fetch("/profit-loss");
+    const json = await res.json();
+    if (!json.success) throw new Error("Failed to fetch data");
+    return json.data || { sales: [], expenses: [] };
+  } catch (err) {
+    console.error(err);
+    return { sales: [], expenses: [] };
   }
-  quantityInput.addEventListener('input', updateTotalAmount);
-  sellPriceInput.addEventListener('input', updateTotalAmount);
+}
 
-  // Fetch data from backend
-  async function fetchData() {
-    try {
-      const res = await fetch("/profit-loss");
-      const json = await res.json();
-      if (!json.success) throw new Error("Failed to fetch data");
-      return json.data || [];
-    } catch (err) {
-      console.error(err);
-      return [];
-    }
-  }
+// Combine sales and expenses into transactions
+function aggregateData({ sales, expenses }) {
+  const transactions = [];
 
-  // Aggregate sales and expenses by date
-  function aggregateByDate(rows) {
-    const grouped = {};
-    rows.forEach(r => {
-      const date = r.summary_date || new Date().toISOString().slice(0,10);
-      if (!grouped[date]) {
-        grouped[date] = { date, sales: 0, expenses: 0, profit: 0, transactions: [] };
-      }
-      const t = grouped[date];
-
-      if (r.product_name) { // Sale
-        const saleAmount = (r.sell_price || 0) * (r.quantity || 0);
-        const expenseAmount = (r.cost_price || 0) * (r.quantity || 0);
-        t.sales += saleAmount;
-        t.profit += (saleAmount - expenseAmount);
-        t.transactions.push({
-          date,
-          fullname: r.fullname || "-",
-          product_name: r.product_name || "-",
-          quantity: r.quantity || 0,
-          sales: saleAmount,
-          expenses: expenseAmount,
-          profit: saleAmount - expenseAmount
-        });
-      } else if (r.description) { // Expense
-        const amt = Number(r.amount) || 0;
-        t.expenses += amt;
-        t.profit -= amt;
-        t.transactions.push({
-          date,
-          fullname: r.description,
-          product_name: r.description,
-          quantity: 0,
-          sales: 0,
-          expenses: amt,
-          profit: -amt
-        });
-      }
+  // Sales
+  sales.forEach(r => {
+    const qty = Number(r.quantity_product) || 0;
+    const saleAmount = (r.sell_price || 0) * qty;
+    const expenseAmount = (r.cost_price || 0) * qty;
+    transactions.push({
+      type: 'Sale',
+      date: r.summary_date,
+      fullname: r.fullname,
+      product_name: r.product_name,
+      quantity: qty,
+      sales: saleAmount,
+      expenses: expenseAmount,
+      profit: saleAmount - expenseAmount
     });
-
-    return Object.values(grouped).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  }
-
-  // Update dashboard, table, chart
-  async function updatePL() {
-    const rows = await fetchData();
-    if (!rows.length) return;
-
-    const data = aggregateByDate(rows);
-
-    const sumProfit = arr => arr.reduce((t,v)=>t+v.profit,0);
-
-    const daily = data[data.length-1] || {profit:0};
-    const week = data.slice(-7);
-    const month = data.slice(-30);
-    const year = data;
-
-    document.getElementById("dailyProfit").textContent = daily.profit.toFixed(2);
-    document.getElementById("weeklyProfit").textContent = sumProfit(week).toFixed(2);
-    document.getElementById("monthlyProfit").textContent = sumProfit(month).toFixed(2);
-    document.getElementById("yearlyProfit").textContent = sumProfit(year).toFixed(2);
-
-    // Transactions table
-    const tbody = document.getElementById("transactionsBody");
-    tbody.innerHTML = "";
-    data.forEach(d => {
-      d.transactions.forEach(t => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${t.date || "-"}</td>
-            <td>${t.fullname || "-"}</td>
-            <td>${t.product_name || "-"}</td>
-            <td>${t.quantity != null ? t.quantity : "-"}</td>
-            <td>${t.sales != null ? t.sales.toFixed(2) : "0.00"}</td>
-            <td>${t.expenses != null ? t.expenses.toFixed(2) : "0.00"}</td>
-            <td style="color:${t.profit >= 0 ? "green":"red"}">${t.profit != null ? t.profit.toFixed(2) : "0.00"}</td>
-          </tr>
-        `;
-      });
-    });
-
-    // Chart
-    new Chart(document.getElementById("plChart"), {
-      type:"line",
-      data:{
-        labels: data.map(d=>d.date),
-        datasets:[
-          {label:"Sales", data:data.map(d=>d.sales), borderColor:"blue", fill:false},
-          {label:"Expenses", data:data.map(d=>d.expenses), borderColor:"red", fill:false},
-          {label:"Profit", data:data.map(d=>d.profit), borderColor:"green", fill:false}
-        ]
-      }
-    });
-  }
-
-  // Submit Sale
-  document.getElementById('addSaleForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const formData = Object.fromEntries(new FormData(e.target).entries());
-    formData.quantity = Number(formData.quantity);
-    formData.sell_price = Number(formData.sell_price);
-    formData.cost_price = Number(formData.cost_price);
-
-    try {
-      const res = await fetch('/add-sale', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(formData)
-      });
-      const json = await res.json();
-      if(json.success){
-        e.target.reset();
-        totalAmountInput.value="";
-        await updatePL();
-        alert("Sale added successfully!");
-      } else {
-        alert(json.message || "Failed to add sale");
-      }
-    } catch(err){
-      console.error("Error submitting sale:", err);
-      alert("Server error while adding sale");
-    }
   });
 
-  // Submit Expense
-  document.getElementById('addExpenseForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const formData = Object.fromEntries(new FormData(e.target).entries());
-    formData.amount = Number(formData.amount);
+  // Expenses
+  expenses.forEach(r => {
+    const amt = Number(r.amount) || 0;
+    transactions.push({
+      type: 'Expense',
+      date: r.date,
+      fullname: r.description,
+      product_name: '-',
+      quantity: 0,
+      sales: 0,
+      expenses: amt,
+      profit: -amt
+    });
+  });
 
-    try {
-      const res = await fetch('/add-expense', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(formData)
-      });
-      const json = await res.json();
-      if(json.success){
+  // Sort by date ascending
+  return transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// Update dashboard, table, chart
+async function updatePL() {
+  const rawData = await fetchData();
+  const transactions = aggregateData(rawData);
+
+  const sumProfit = arr => arr.reduce((t, v) => t + v.profit, 0);
+
+  // Totals
+  const todayStr = new Date().toISOString().slice(0,10);
+  const daily = transactions.filter(t => t.date.slice(0,10) === todayStr);
+  const week = transactions.slice(-7);
+  const month = transactions.slice(-30);
+  const year = transactions;
+
+  document.getElementById("dailyProfit").textContent = sumProfit(daily).toFixed(2);
+  document.getElementById("weeklyProfit").textContent = sumProfit(week).toFixed(2);
+  document.getElementById("monthlyProfit").textContent = sumProfit(month).toFixed(2);
+  document.getElementById("yearlyProfit").textContent = sumProfit(year).toFixed(2);
+
+  // Populate transactions table
+  const tbody = document.getElementById("transactionsBody");
+  tbody.innerHTML = "";
+  transactions.forEach(t => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${t.date || "-"}</td>
+        <td>${t.fullname || "-"}</td>
+        <td>${t.product_name || "-"}</td>
+        <td>${t.quantity != null ? t.quantity : "-"}</td>
+        <td>${t.sales != null ? t.sales.toFixed(2) : "0.00"}</td>
+        <td>${t.expenses != null ? t.expenses.toFixed(2) : "0.00"}</td>
+        <td style="color:${t.profit >= 0 ? "green":"red"}">${t.profit != null ? t.profit.toFixed(2) : "0.00"}</td>
+        <td>${t.type}</td>
+      </tr>
+    `;
+  });
+
+  // Chart
+  new Chart(document.getElementById("plChart"), {
+    type: "line",
+    data: {
+      labels: transactions.map(t => t.date),
+      datasets: [
+        { label: "Sales", data: transactions.map(t => t.sales), borderColor: "blue", fill: false },
+        { label: "Expenses", data: transactions.map(t => t.expenses), borderColor: "red", fill: false },
+        { label: "Profit", data: transactions.map(t => t.profit), borderColor: "green", fill: false }
+      ]
+    }
+  });
+}
+
+// Submit Sale
+document.getElementById('addSaleForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const formData = Object.fromEntries(new FormData(e.target).entries());
+
+  formData.quantity_product = Number(formData.quantity || formData.quantity_product);
+  delete formData.quantity;
+
+  formData.fullname = formData.fullname?.trim();
+  formData.product_name = formData.product_name?.trim();
+
+  if (!formData.fullname || !formData.product_name || !formData.quantity_product || isNaN(formData.quantity_product)) {
+    alert("Tafadhali jaza fullname, product_name na quantity sahihi");
+    return;
+  }
+
+  try {
+    const res = await fetch('/add-sale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+    const json = await res.json();
+    if(json.success){
+      e.target.reset();
+      totalAmountInput.value = "";
+      await updatePL();
+      alert("Sale added successfully!");
+    } else {
+      alert(json.message || "Failed to add sale");
+    }
+  } catch(err){
+    console.error("Error submitting sale:", err);
+    alert("Server error while adding sale");
+  }
+});
+
+// Submit Expense
+document.getElementById('addExpenseForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const formData = Object.fromEntries(new FormData(e.target).entries());
+  formData.amount = Number(formData.amount);
+
+  if(!formData.description || !formData.amount || isNaN(formData.amount)){
+    alert("Tafadhali jaza description na amount sahihi");
+    return;
+  }
+
+try {
+    const res = await fetch('/add-expense', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    });
+
+    // Parse JSON
+    const json = await res.json();
+
+    if (res.ok && json.success) {
         e.target.reset();
         await updatePL();
-      } else {
+        alert(json.message || "Expense added successfully!");
+    } else {
         alert(json.message || "Failed to add expense");
-      }
-    } catch(err){ console.error(err); }
-  });
+    }
+} catch(err) {
+    console.error(err);
+    alert("Server error while adding expense");
+}
+});
 
-  // Initial load
-  updatePL();
+
+// Initial load
+updatePL();
 </script>
+
+
+
 
 
 
