@@ -321,46 +321,41 @@ exports.deleteProduct = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 exports.getAllSales = async (req, res) => {
-    try {
-        const [rows] = await db.execute('SELECT * FROM sales ORDER BY date DESC');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error fetching sales' });
-    }
+  try {
+    const [rows] = await db.execute('SELECT * FROM sales ORDER BY date DESC');
+    res.json({ success: true, sales: rows });
+  } catch (err) {
+    console.error('Error fetching sales:', err);
+    res.status(500).json({ success: false, message: 'Server error fetching sales' });
+  }
 };
+
 exports.addSale = async (req, res) => {
   try {
     const { fullname, quantity } = req.body;
 
-    // Insert into database and get the inserted ID
     const [result] = await db.execute(
       'INSERT INTO sales (fullname, quantity, date) VALUES (?, ?, NOW())',
       [fullname, quantity]
     );
 
-    // Construct the new sale object
+    // Return the inserted sale including DB-generated id
     const newSale = {
-      id: result.insertId,      // Database-generated primary key
+      id: result.insertId,
       fullname,
       quantity,
-      date: new Date()          // Current timestamp
+      date: new Date()
     };
 
-    return res.json({
-      success: true,
-      message: 'Sale added successfully',
-      sale: newSale
-    });
+    return res.json({ success: true, message: 'Sale added successfully', sale: newSale });
   } catch (err) {
     console.error('Error in addSale:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error adding sale'
-    });
+    return res.status(500).json({ success: false, message: 'Server error adding sale' });
   }
 };
+
 
 exports.getPL = async (req, res) => {
   try {
@@ -516,23 +511,56 @@ exports.getAllDebts = async (req, res) => {
 };
 exports.addDebt = async (req, res) => {
   try {
-    const { customer, contact, product, quantity, price, issueDate, dueDate, status } = req.body;
+    let { customer, contact, product, quantity, price, issueDate, dueDate, status } = req.body;
+
+    // Validate required fields
+    if(!customer || !product || !issueDate || !dueDate || !status){
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    // Convert types
+    quantity = Number(quantity) || 0;
+    price = Number(price) || 0;
     const total = quantity * price;
     const balance = total;
 
-    await db.execute(
+    // Ensure dates are valid
+    if(isNaN(new Date(issueDate)) || isNaN(new Date(dueDate))) {
+      return res.status(400).json({ success: false, message: "Invalid dates" });
+    }
+
+    // Insert into database
+    const [result] = await db.execute(
       `INSERT INTO debts 
-      (customer, contact, product, quantity, price, total, payments, balance, issueDate, dueDate, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, NOW())`,
+        (customer, contact, product, quantity, price, total, payments, balance, issueDate, dueDate, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, NOW())`,
       [customer, contact, product, quantity, price, total, balance, issueDate, dueDate, status]
     );
 
-    res.json({ success: true, message: "Debt added successfully" });
+    // Return the inserted row info so frontend can update table immediately
+    const newDebt = {
+      id: result.insertId,
+      customer,
+      contact,
+      product,
+      quantity,
+      price,
+      total,
+      payments: 0,
+      balance,
+      issueDate,
+      dueDate,
+      status
+    };
+
+    res.json({ success: true, message: "Debt added successfully", debt: newDebt });
+
   } catch (err) {
     console.error("Error adding debt:", err);
-    res.status(500).json({ success: false, message: "Server error adding debt" });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 exports.editDebt = async (req, res) => {
   try {
     const { id } = req.params;

@@ -122,10 +122,10 @@
             <input type="number" class="form-control" id="price" placeholder="Price"  required>
           </div>
           <div class="mb-2">
-            <input type="date" class="form-control" id="issueDate" required>
+            <input type="date" class="form-control" id="issueDate" placeholder="issueDate" required>
           </div>
           <div class="mb-2">
-            <input type="date" class="form-control" id="dueDate" required>
+            <input type="date" class="form-control" id="dueDate" placeholder="dueDate" required>
           </div>
           <div class="mb-2">
             <select id="status" class="form-select">
@@ -169,10 +169,10 @@ let debts = [];
 const debtModal = new bootstrap.Modal(document.getElementById('debtModal'));
 const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
 
-// Fetch debts from backend
+// Fetch all debts from backend
 async function fetchDebts() {
   try {
-    const res = await fetch('/debts/all');
+    const res = await fetch('/all');
     const json = await res.json();
     debts = json.success ? json.data : [];
     updateDashboard();
@@ -193,6 +193,7 @@ function updateDashboard() {
 
   debts.forEach(d => {
     const row = document.createElement("tr");
+
     row.innerHTML = `
       <td>${d.customer}</td>
       <td>${d.contact}</td>
@@ -206,13 +207,20 @@ function updateDashboard() {
       <td>${d.dueDate?.slice(0,10) || ''}</td>
       <td class="${statusClass(d.status)}">${d.status}</td>
       <td>
-        <button class="btn btn-sm btn-warning" onclick="editDebt(${d.id})">Edit</button>
-        <button class="btn btn-sm btn-success" onclick="recordPaymentModal(${d.id})">Pay</button>
-        <button class="btn btn-sm btn-info" onclick="remindCustomer('${d.customer}')">Remind</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteDebt(${d.id})">Delete</button>
+        <button class="btn btn-sm btn-warning editBtn">Edit</button>
+        <button class="btn btn-sm btn-success payBtn">Pay</button>
+        <button class="btn btn-sm btn-info remindBtn">Remind</button>
+        <button class="btn btn-sm btn-danger deleteBtn">Delete</button>
       </td>
     `;
+
     tbody.appendChild(row);
+
+    // Attach event listeners dynamically AFTER adding to DOM
+    row.querySelector(".editBtn").addEventListener("click", () => editDebt(d.id));
+    row.querySelector(".payBtn").addEventListener("click", () => recordPaymentModal(d.id));
+    row.querySelector(".remindBtn").addEventListener("click", () => remindCustomer(d.customer));
+    row.querySelector(".deleteBtn").addEventListener("click", () => deleteDebt(d.id));
 
     totalDebts += +d.total;
     clearedCredits += +d.payments;
@@ -263,7 +271,7 @@ function editDebt(id){
   debtModal.show();
 }
 
-// Add/Edit debt submit
+// Add/Edit debt form submit
 document.getElementById("debtForm").addEventListener("submit", async e => {
   e.preventDefault();
   const id = document.getElementById("editId").value;
@@ -279,7 +287,7 @@ document.getElementById("debtForm").addEventListener("submit", async e => {
   };
 
   try {
-    const res = await fetch(id ? `/debts/edit/${id}` : '/debts/add', {
+    const res = await fetch(id ? `/edit/${id}` : '/add', {
       method: id ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -287,7 +295,10 @@ document.getElementById("debtForm").addEventListener("submit", async e => {
     const json = await res.json();
     if(json.success){
       debtModal.hide();
-      fetchDebts();
+      if(!id && json.debt){
+        debts.unshift(json.debt);
+        updateDashboard();
+      } else fetchDebts();
       alert(json.message);
     } else alert(json.message);
   } catch(err){
@@ -311,7 +322,7 @@ document.getElementById("paymentForm").addEventListener("submit", async e => {
   if(amount <= 0){ alert("Invalid payment amount"); return; }
 
   try {
-    const res = await fetch(`/debts/payment/${id}`, {
+    const res = await fetch(`/payment/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount })
@@ -329,10 +340,11 @@ document.getElementById("paymentForm").addEventListener("submit", async e => {
 async function deleteDebt(id){
   if(!confirm("Delete this debt?")) return;
   try {
-    const res = await fetch(`/debts/delete/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/delete/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if(json.success){
-      fetchDebts();
+      debts = debts.filter(d => d.id != id);
+      updateDashboard();
       alert(json.message);
     } else alert(json.message);
   } catch(err){ console.error(err); alert("Server error"); }
@@ -344,6 +356,9 @@ function remindCustomer(name){ alert(`Send reminder to ${name}`); }
 // Initial load
 fetchDebts();
 </script>
+
+
+
 
 
 </body>
