@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; }
+    .settings-card { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 900px; margin: 40px auto; }
+    .settings-card h4 { margin-bottom: 20px; }
+    .form-label { font-weight: 500; }
+    .section-divider { border-top: 1px solid #dee2e6; margin: 25px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="settings-card">
+    <h4>System Settings</h4>
+
+    <!-- Account Settings -->
+    <h5>Account Settings</h5>
+    <form id="accountSettingsForm">
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" id="settingEmail" value="monica@example.com" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Phone Number</label>
+        <input type="tel" class="form-control" id="settingPhone" value="+255 123 456 789">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Change Password</label>
+        <input type="password" class="form-control" id="settingPassword" placeholder="Enter new password">
+      </div>
+      <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Account Settings</button>
+    </form>
+
+    <div class="section-divider"></div>
+
+    <!-- Notification Settings -->
+    <h5>Notifications</h5>
+    <form id="notificationSettingsForm">
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="notifySales" checked>
+        <label class="form-check-label" for="notifySales">Notify me for new sales</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="notifyStock">
+        <label class="form-check-label" for="notifyStock">Notify me when stock is low</label>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="notifyReports" checked>
+        <label class="form-check-label" for="notifyReports">Notify me for new reports</label>
+      </div>
+      <button type="submit" class="btn btn-success"><i class="fas fa-bell"></i> Save Notification Settings</button>
+    </form>
+
+    <div class="section-divider"></div>
+
+    <!-- Display / Theme Settings -->
+    <h5>Display Settings</h5>
+    <form id="displaySettingsForm">
+      <div class="mb-3">
+        <label class="form-label">Theme</label>
+        <select class="form-control" id="themeSelect">
+          <option value="light" selected>Light Mode</option>
+          <option value="dark">Dark Mode</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Currency</label>
+        <select class="form-control" id="currencySelect">
+          <option value="TZS" selected>TZS</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success"><i class="fas fa-cog"></i> Save Display Settings</button>
+    </form>
+
+    <div class="section-divider"></div>
+
+    <!-- System Actions -->
+    <h5>System Actions</h5>
+    <button class="btn btn-danger mb-2" id="deleteAccountBtn"><i class="fas fa-user-slash"></i> Delete Account</button>
+    <button class="btn btn-secondary" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+
+  </div>
+</div>
+
+<script>
+  // Account settings
+  document.getElementById('accountSettingsForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    alert('Account settings saved successfully!');
+    // Here you can send data to backend
+  });
+
+  // Notification settings
+  document.getElementById('notificationSettingsForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    alert('Notification settings saved!');
+  });
+
+  // Display settings
+  document.getElementById('displaySettingsForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const theme = document.getElementById('themeSelect').value;
+    const currency = document.getElementById('currencySelect').value;
+    alert(`Display settings saved!\nTheme: ${theme}\nCurrency: ${currency}`);
+    // You can toggle dark mode class here
+    if(theme === 'dark') document.body.style.background = '#1e1e1e';
+    else document.body.style.background = '#f4f6f9';
+  });
+
+  // Delete account
+  document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+    if(confirm("Are you sure you want to delete your account? This cannot be undone!")) {
+      alert("Account deleted (simulate).");
+    }
+  });
+
+  // Logout
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    alert("Logged out successfully!");
+    // Redirect to login page
+    // window.location.href = '/login';
+  });
+</script>
+
+</body>
+</html>

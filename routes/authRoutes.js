@@ -82,11 +82,20 @@ router.get("/shop/Debits", authController.getDebits);
 router.get("/shop/Audit_logs", authController.getAuditLogs);
 
 router.get("/agent", authController.getAgents);
+router.get("/agent/transactions", authController.getTransactions);
+router.get("/agent/Customer", authController.getCustomer);
+router.get("/agent/debts", authController.getDebts);
+router.get("/agent/security", authController.getSecurity);
+router.get("/agent/Settings1", authController.getSettings1);
+router.get("/agent/logout", authController.logout);
 
 router.get("/Bedsheets", authController.getBedsheets);
 router.get("/Bedsheets/Bedsheet_management", authController.getBedsheetManagement);
 router.get("/Bedsheets/Sales_bedsheets", authController.getSalesBedsheets);
 router.get("/Bedsheets/Products_bedsheets", authController.getProductsBedsheets);
 router.get("/Bedsheet/Reports_bedsheets", authController.getReportsBedsheets);
+router.get("/Profile", authController.getProfile);
+router.get("/setting", authController.getSetting);
+router.get("/more", authController.getMore);
 
 module.exports = router;

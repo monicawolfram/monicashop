@@ -2,6 +2,7 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcrypt");
 const dbConfig = require("../config/dbConfig"); // create dbConfig.js for db connection
 const db = require("../config/dbConfig");
+const e = require("express");
 
 
 
@@ -704,6 +705,29 @@ exports.getAuditLogs = (req, res) => {
 exports.getAgents = (req, res) => {
   res.render("agent");
 } ;
+exports.getTransactions = (req, res) => {
+  res.render("transactions");
+} ;
+exports.getCustomer = (req, res) => {
+  res.render("customer");
+} ;
+exports.getDebts = (req, res) => {
+  res.render("debts");
+} ;
+exports.getSecurity = (req, res) => {
+  res.render("security");
+} ;
+exports.getSettings1 = (req, res) => {
+  res.render("settings1");
+} ;
+exports.logout = (req, res) => {
+  res.render("logout");
+};
+
+
+
+
+
 exports.getBedsheets = (req, res) => {
   res.render("Bedsheets");
 } ;
@@ -719,3 +743,12 @@ exports.getProductsBedsheets = (req, res) => {
 exports.getReportsBedsheets = (req, res) => {
   res.render("Reports_bedsheets");
 } ;
+exports.getProfile = (req, res) => {
+  res.render("Profile");
+} ;
+exports.getSetting = (req, res) => {
+  res.render("setting");
+} ;
+exports.getMore = (req, res) => {
+  res.render("more");
+};
