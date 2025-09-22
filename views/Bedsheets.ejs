@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedsheet Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background: #f4f6f9; 
+    }
+
+    /* Sidebar */
+    .sidebar { 
+      height: 100vh; 
+      background: #2c3e50; 
+      color: #fff; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 250px; 
+      transition: width 0.3s; 
+      overflow-y: auto; 
+    }
+    .sidebar.collapsed { width: 70px; }
+    .sidebar h4 { color: #ecf0f1; }
+    .sidebar .nav-link { 
+      color: #fff; 
+      padding: 15px 20px; 
+      display: flex; 
+      align-items: center; 
+      text-decoration: none; 
+      transition: background 0.2s; 
+    }
+    .sidebar .nav-link:hover { background: #34495e; }
+    .sidebar .nav-link i { margin-right: 10px; min-width: 20px; text-align: center; }
+    .sidebar.collapsed .nav-link span { display: none; }
+    .sidebar .nav-link.active { background: #1abc9c; }
+
+    /* Main content */
+    .main-content { 
+      margin-left: 250px; 
+      transition: margin-left 0.3s; 
+      padding: 20px; 
+    }
+    .main-content.collapsed { margin-left: 70px; }
+
+    /* Top navbar */
+    .top-navbar { 
+      height: 60px; 
+      background: #fff; 
+      border-bottom: 1px solid #dee2e6; 
+      display: flex; 
+      align-items: center; 
+      padding: 0 20px; 
+      position: sticky; 
+      top: 0; 
+      z-index: 1000; 
+    }
+    .toggle-btn { cursor: pointer; font-size: 1.2rem; margin-right: 15px; }
+
+    /* Status colors */
+    .status-instock { color: #10b981; font-weight: bold; }
+    .status-lowstock { color: #f59e0b; font-weight: bold; }
+    .status-outstock { color: #ef4444; font-weight: bold; }
+
+    /* Cards */
+    .card.bg-primary { background-color: #3b82f6 !important; }
+    .card.bg-success { background-color: #10b981 !important; }
+    .card.bg-warning { background-color: #f59e0b !important; }
+    .card.bg-danger { background-color: #ef4444 !important; }
+
+    /* Table */
+    table.table { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    table.table thead { background: #2c3e50; color: #fbbf24; }
+    table.table tbody tr:hover { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h4 class="text-center py-3">Bedsheet Panel</h4>
+    <ul class="nav flex-column">
+      <li><a href="/Bedsheets" class="nav-link active"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
+      <li><a href="/Bedsheets/Bedsheet_management" class="nav-link"><i class="fas fa-layer-group"></i> <span>Bedsheet Management</span></a></li>
+      <li><a href="/Bedsheets/Sales_bedsheets" class="nav-link"><i class="fas fa-shopping-cart"></i> <span>Sales</span></a></li>
+      <li><a href="/Bedsheets/Products_bedsheets" class="nav-link"><i class="fas fa-box"></i> <span>Products</span></a></li>
+      <li><a href="/Bedsheet/Reports_bedsheets" class="nav-link"><i class="fas fa-chart-line"></i> <span>Reports</span></a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content" id="main-content">
+    <!-- Top Navbar -->
+    <div class="top-navbar">
+      <i class="fas fa-bars toggle-btn" id="toggleSidebar"></i>
+      <h5 class="mb-0">Bedsheet Dashboard</h5>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="container-fluid mt-4">
+      <!-- Summary Cards -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Total Bedsheets</h5>
+              <p class="card-text" id="totalBedsheets">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+              <h5 class="card-title">In Stock</h5>
+              <p class="card-text" id="inStock">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Low Stock</h5>
+              <p class="card-text" id="lowStock">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white bg-danger mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Out of Stock</h5>
+              <p class="card-text" id="outStock">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Brand</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th>Quantity</th>
+              <th>Status</th>
+              <th>Price (TZS)</th>
+            </tr>
+          </thead>
+          <tbody id="bedsheetTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let bedsheets = [
+    {id:1, brand:"Luxury Sleep", size:"King", color:"White", quantity:50, price:25000},
+    {id:2, brand:"ComfortZone", size:"Queen", color:"Blue", quantity:5, price:18000},
+    {id:3, brand:"SleepWell", size:"Single", color:"Grey", quantity:0, price:12000},
+    {id:4, brand:"Luxury Sleep", size:"Queen", color:"Pink", quantity:12, price:20000},
+  ];
+
+  function updateDashboard() {
+    const tbody = document.getElementById("bedsheetTableBody");
+    tbody.innerHTML = "";
+
+    let total = bedsheets.length;
+    let inStock = 0, lowStock = 0, outStock = 0;
+
+    bedsheets.forEach(b => {
+      let status = "";
+      if (b.quantity === 0) { status = "Out of Stock"; outStock++; }
+      else if (b.quantity <= 10) { status = "Low Stock"; lowStock++; }
+      else { status = "In Stock"; inStock++; }
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${b.id}</td>
+        <td>${b.brand}</td>
+        <td>${b.size}</td>
+        <td>${b.color}</td>
+        <td>${b.quantity}</td>
+        <td class="${statusClass(status)}">${status}</td>
+        <td>${b.price.toLocaleString()}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById("totalBedsheets").textContent = total;
+    document.getElementById("inStock").textContent = inStock;
+    document.getElementById("lowStock").textContent = lowStock;
+    document.getElementById("outStock").textContent = outStock;
+  }
+
+  function statusClass(status){
+    switch(status){
+      case "In Stock": return "status-instock";
+      case "Low Stock": return "status-lowstock";
+      case "Out of Stock": return "status-outstock";
+      default: return "";
+    }
+  }
+
+  // Sidebar toggle
+  document.getElementById("toggleSidebar").addEventListener("click", function() {
+    document.getElementById("sidebar").classList.toggle("collapsed");
+    document.getElementById("main-content").classList.toggle("collapsed");
+  });
+
+  updateDashboard();
+</script>
+
+</body>
+</html>

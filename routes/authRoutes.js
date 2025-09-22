@@ -50,7 +50,7 @@ router.get('/sales', authController.getAllSales);
 router.post('/sales/add', authController.addSale);
 
 router.get('/profit-loss', authController.getPL);
-router.post('/add-sale', authController.addSale);
+router.post('/add-sale', authController.addSales);
 router.post('/add-expense', authController.addExpense);
 
 router.get('/product-summary', authController.getStockStatus);
@@ -82,4 +82,11 @@ router.get("/shop/Debits", authController.getDebits);
 router.get("/shop/Audit_logs", authController.getAuditLogs);
 
 router.get("/agent", authController.getAgents);
+
+router.get("/Bedsheets", authController.getBedsheets);
+router.get("/Bedsheets/Bedsheet_management", authController.getBedsheetManagement);
+router.get("/Bedsheets/Sales_bedsheets", authController.getSalesBedsheets);
+router.get("/Bedsheets/Products_bedsheets", authController.getProductsBedsheets);
+router.get("/Bedsheet/Reports_bedsheets", authController.getReportsBedsheets);
+
 module.exports = router;

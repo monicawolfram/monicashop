@@ -321,7 +321,6 @@ exports.deleteProduct = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 exports.getAllSales = async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT * FROM sales ORDER BY date DESC');
@@ -331,7 +330,6 @@ exports.getAllSales = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error fetching sales' });
   }
 };
-
 exports.addSale = async (req, res) => {
   try {
     const { fullname, quantity } = req.body;
@@ -355,8 +353,6 @@ exports.addSale = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error adding sale' });
   }
 };
-
-
 exports.getPL = async (req, res) => {
   try {
     // Fetch all sales
@@ -379,81 +375,106 @@ exports.getPL = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-// exports.addSale = async (req, res) => {
-//   try {
-//     let { fullname, product_name, quantity_product, date } = req.body;
+exports.addSales = async (req, res) => {
+  try {
+    console.log("Request body received:", req.body);
 
-//     // Trim strings safely
-//     fullname = fullname?.trim();
-//     product_name = product_name?.trim();
+    let { fullname, product_name, quantity_product, date } = req.body;
 
-//     // Ensure numeric quantity
-//     const quantity = Number(quantity_product);
+    // Trim strings safely
+    fullname = fullname?.trim();
+    product_name = product_name?.trim();
 
-//     // Use provided date or current date
-//     const saleDate = date ? new Date(date) : new Date();
+    if (!fullname || !product_name || !quantity_product) {
+      return res.status(400).json({
+        success: false,
+        message: "Fullname, product name, and quantity are required"
+      });
+    }
 
-//     // Fetch product prices
-//     const [productRows] = await db.execute(
-//       "SELECT sell_price, cost_price FROM products WHERE name = ? LIMIT 1",
-//       [product_name]
-//     );
+    // Ensure numeric quantity
+    const quantity = Number(quantity_product);
+    if (isNaN(quantity) || quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be a positive number"
+      });
+    }
 
-//     if (productRows.length === 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Product not found"
-//       });
-//     }
+    // Use provided date or current date
+    const saleDate = date ? new Date(date) : new Date();
+    if (isNaN(saleDate.getTime())) {
+      return res.status(400).json({ success: false, message: "Invalid date" });
+    }
+    const saleDateStr = saleDate.toISOString().slice(0, 10); // 'YYYY-MM-DD' for MySQL
 
-//     const { sell_price, cost_price } = productRows[0];
+    // Fetch product prices
+    const [productRows] = await db.execute(
+      "SELECT sell_price, cost_price FROM products WHERE name = ? LIMIT 1",
+      [product_name]
+    );
+    console.log("Fetched product rows:", productRows);
 
-//     // Calculate totals and profit
-//     const totalSales = sell_price * quantity;
-//     const totalExpenses = cost_price * quantity;
-//     const profit = totalSales - totalExpenses;
+    if (productRows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Product not found"
+      });
+    }
 
-//     // Insert into profit_loss_summary
-//     await db.execute(
-//       `INSERT INTO profit_loss_summary 
-//         (summary_date, fullname, product_name, quantity_product, sell_price, cost_price, total_sales, total_expenses, profit, created_at)
-//        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-//       [
-//         saleDate,
-//         fullname,
-//         product_name,
-//         quantity,
-//         sell_price,
-//         cost_price,
-//         totalSales,
-//         totalExpenses,
-//         profit,
-//       ]
-//     );
+    const { sell_price, cost_price } = productRows[0];
 
-//     return res.json({
-//       success: true,
-//       message: "Sale recorded successfully",
-//       data: {
-//         fullname,
-//         product_name,
-//         quantity,
-//         sell_price,
-//         cost_price,
-//         totalSales,
-//         totalExpenses,
-//         profit,
-//         saleDate,
-//       },
-//     });
-//   } catch (err) {
-//     console.error("Error in addSale:", err);
-//     return res
-//       .status(500)
-//       .json({ success: false, message: "Server error adding sale" });
-//   }
-// };
+    // Calculate totals and profit
+    const totalSales = sell_price * quantity;
+    const totalExpenses = cost_price * quantity;
+    const profit = totalSales - totalExpenses;
 
+    // Insert into profit_loss_summary
+    const [result] = await db.execute(
+      `INSERT INTO profit_loss_summary 
+        (summary_date, fullname, product_name, quantity_product, sell_price, cost_price, total_sales, total_expenses, profit, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        saleDateStr,
+        fullname,
+        product_name,
+        quantity,
+        sell_price,
+        cost_price,
+        totalSales,
+        totalExpenses,
+        profit
+      ]
+    );
+
+    console.log("Insert result:", result);
+
+    return res.json({
+      success: true,
+      message: "Sale recorded successfully",
+      data: {
+        id: result.insertId,
+        fullname,
+        product_name,
+        quantity,
+        sell_price,
+        cost_price,
+        totalSales,
+        totalExpenses,
+        profit,
+        saleDate: saleDateStr
+      }
+    });
+
+  } catch (err) {
+    console.error("Error in addSales:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error adding sale",
+      error: err.message
+    });
+  }
+};
 exports.addExpense = async (req, res) => {
   try {
     let { description, amount, date } = req.body;
@@ -682,4 +703,19 @@ exports.getAuditLogs = (req, res) => {
 } ;
 exports.getAgents = (req, res) => {
   res.render("agent");
+} ;
+exports.getBedsheets = (req, res) => {
+  res.render("Bedsheets");
+} ;
+exports.getBedsheetManagement = (req, res) => {
+  res.render("Bedsheet_management");
+} ;
+exports.getSalesBedsheets = (req, res) => {
+  res.render("Sales_bedsheets");
+} ;
+exports.getProductsBedsheets = (req, res) => {
+  res.render("Products_bedsheets");
+} ;
+exports.getReportsBedsheets = (req, res) => {
+  res.render("Reports_bedsheets");
 } ;
