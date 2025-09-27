@@ -159,62 +159,67 @@
   </div>
 
 <script>
-  let bedsheets = [
-    {id:1, brand:"Luxury Sleep", size:"King", color:"White", quantity:50, price:25000},
-    {id:2, brand:"ComfortZone", size:"Queen", color:"Blue", quantity:5, price:18000},
-    {id:3, brand:"SleepWell", size:"Single", color:"Grey", quantity:0, price:12000},
-    {id:4, brand:"Luxury Sleep", size:"Queen", color:"Pink", quantity:12, price:20000},
-  ];
-
-  function updateDashboard() {
-    const tbody = document.getElementById("bedsheetTableBody");
-    tbody.innerHTML = "";
-
-    let total = bedsheets.length;
-    let inStock = 0, lowStock = 0, outStock = 0;
-
-    bedsheets.forEach(b => {
-      let status = "";
-      if (b.quantity === 0) { status = "Out of Stock"; outStock++; }
-      else if (b.quantity <= 10) { status = "Low Stock"; lowStock++; }
-      else { status = "In Stock"; inStock++; }
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${b.id}</td>
-        <td>${b.brand}</td>
-        <td>${b.size}</td>
-        <td>${b.color}</td>
-        <td>${b.quantity}</td>
-        <td class="${statusClass(status)}">${status}</td>
-        <td>${b.price.toLocaleString()}</td>
-      `;
-      tbody.appendChild(row);
-    });
-
-    document.getElementById("totalBedsheets").textContent = total;
-    document.getElementById("inStock").textContent = inStock;
-    document.getElementById("lowStock").textContent = lowStock;
-    document.getElementById("outStock").textContent = outStock;
+async function fetchBedsheets() {
+  try {
+    const res = await fetch('/all/bedsheets');
+    const bedsheets = await res.json();
+    updateDashboard(bedsheets);
+  } catch (err) {
+    console.error('Error fetching bedsheets:', err);
   }
+}
 
-  function statusClass(status){
-    switch(status){
-      case "In Stock": return "status-instock";
-      case "Low Stock": return "status-lowstock";
-      case "Out of Stock": return "status-outstock";
-      default: return "";
-    }
-  }
+function updateDashboard(bedsheets) {
+  const tbody = document.getElementById("bedsheetTableBody");
+  tbody.innerHTML = "";
 
-  // Sidebar toggle
-  document.getElementById("toggleSidebar").addEventListener("click", function() {
-    document.getElementById("sidebar").classList.toggle("collapsed");
-    document.getElementById("main-content").classList.toggle("collapsed");
+  let total = bedsheets.length;
+  let inStock = 0, lowStock = 0, outStock = 0;
+
+  bedsheets.forEach(b => {
+    let status = "";
+    if (b.quantity === 0) { status = "Out of Stock"; outStock++; }
+    else if (b.quantity <= 10) { status = "Low Stock"; lowStock++; }
+    else { status = "In Stock"; inStock++; }
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${b.id}</td>
+      <td>${b.brand}</td>
+      <td>${b.size}</td>
+      <td>${b.color}</td>
+      <td>${b.quantity}</td>
+      <td class="${statusClass(status)}">${status}</td>
+      <td>${Number(b.price).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row);
   });
 
-  updateDashboard();
+  document.getElementById("totalBedsheets").textContent = total;
+  document.getElementById("inStock").textContent = inStock;
+  document.getElementById("lowStock").textContent = lowStock;
+  document.getElementById("outStock").textContent = outStock;
+}
+
+function statusClass(status){
+  switch(status){
+    case "In Stock": return "status-instock";
+    case "Low Stock": return "status-lowstock";
+    case "Out of Stock": return "status-outstock";
+    default: return "";
+  }
+}
+
+// Sidebar toggle
+document.getElementById("toggleSidebar").addEventListener("click", function() {
+  document.getElementById("sidebar").classList.toggle("collapsed");
+  document.getElementById("main-content").classList.toggle("collapsed");
+});
+
+// Fetch data on load
+fetchBedsheets();
 </script>
+
 
 </body>
 </html>

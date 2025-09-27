@@ -639,6 +639,84 @@ exports.recordPayment = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error recording payment" });
   }
 };
+exports.getAllBedsheets = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM bedsheets");
+
+    // Auto-calc summary
+    let total = rows.length;
+    let inStock = 0, lowStock = 0, outStock = 0, totalValue = 0;
+
+    rows.forEach(b => {
+      if (b.quantity === 0) outStock++;
+      else if (b.quantity <= 10) lowStock++;
+      else inStock++;
+      totalValue += b.quantity * b.price;
+    });
+
+    // Save summary in DB
+    await db.query(
+      `INSERT INTO bedsheet_summary (total, inStock, lowStock, outStock, totalValue) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [total, inStock, lowStock, outStock, totalValue]
+    );
+
+    res.json({ bedsheets: rows, summary: { total, inStock, lowStock, outStock, totalValue } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch bedsheets" });
+  }
+};
+exports.addBedsheet = async (req, res) => {
+  const { brand, size, color, quantity, price } = req.body;
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO bedsheets (brand, size, color, quantity, price) VALUES (?, ?, ?, ?, ?)',
+      [brand, size, color, quantity, price]
+    );
+    res.json({ id: result.insertId, brand, size, color, quantity, price });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.deleteBedsheet = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.execute('DELETE FROM bedsheets WHERE id = ?', [id]);
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.editBedsheet = async (req, res) => {
+  const { id } = req.params;
+  const { brand, size, color, quantity, price } = req.body;
+  try {
+    await db.execute(
+      'UPDATE bedsheets SET brand=?, size=?, color=?, quantity=?, price=? WHERE id=?',
+      [brand, size, color, quantity, price, id]
+    );
+    res.json({ message: 'Updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.saveSummary = async (req, res) => {
+  const { total, inStock, lowStock, outStock, totalValue } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO bedsheet_summary (total, inStock, lowStock, outStock, totalValue) VALUES (?, ?, ?, ?, ?)`,
+      [total, inStock, lowStock, outStock, totalValue]
+    );
+    res.json({ message: "Summary saved successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save summary" });
+  }
+};
+
+
+
 
 
 
@@ -723,11 +801,6 @@ exports.getSettings1 = (req, res) => {
 exports.logout = (req, res) => {
   res.render("logout");
 };
-
-
-
-
-
 exports.getBedsheets = (req, res) => {
   res.render("Bedsheets");
 } ;
