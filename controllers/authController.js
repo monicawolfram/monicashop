@@ -643,25 +643,7 @@ exports.getAllBedsheets = async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM bedsheets");
 
-    // Auto-calc summary
-    let total = rows.length;
-    let inStock = 0, lowStock = 0, outStock = 0, totalValue = 0;
-
-    rows.forEach(b => {
-      if (b.quantity === 0) outStock++;
-      else if (b.quantity <= 10) lowStock++;
-      else inStock++;
-      totalValue += b.quantity * b.price;
-    });
-
-    // Save summary in DB
-    await db.query(
-      `INSERT INTO bedsheet_summary (total, inStock, lowStock, outStock, totalValue) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [total, inStock, lowStock, outStock, totalValue]
-    );
-
-    res.json({ bedsheets: rows, summary: { total, inStock, lowStock, outStock, totalValue } });
+    res.json(rows); // just send rows, frontend calculates summary
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch bedsheets" });
@@ -674,16 +656,11 @@ exports.addBedsheet = async (req, res) => {
       'INSERT INTO bedsheets (brand, size, color, quantity, price) VALUES (?, ?, ?, ?, ?)',
       [brand, size, color, quantity, price]
     );
+
+    // Update summary after change
+    await updateSummary();
+
     res.json({ id: result.insertId, brand, size, color, quantity, price });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-exports.deleteBedsheet = async (req, res) => {
-  const { id } = req.params;
-  try {
-    await db.execute('DELETE FROM bedsheets WHERE id = ?', [id]);
-    res.json({ message: 'Deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -696,22 +673,144 @@ exports.editBedsheet = async (req, res) => {
       'UPDATE bedsheets SET brand=?, size=?, color=?, quantity=?, price=? WHERE id=?',
       [brand, size, color, quantity, price, id]
     );
+
+    // Update summary after change
+    await updateSummary();
+
     res.json({ message: 'Updated successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 };
-exports.saveSummary = async (req, res) => {
-  const { total, inStock, lowStock, outStock, totalValue } = req.body;
+exports.deleteBedsheet = async (req, res) => {
+  const { id } = req.params;
   try {
+    await db.execute('DELETE FROM bedsheets WHERE id = ?', [id]);
+
+    // Update summary after change
+    await updateSummary();
+
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+async function updateSummary() {
+  try {
+    const [rows] = await db.query("SELECT * FROM bedsheets");
+
+    let total = rows.length;
+    let inStock = 0, lowStock = 0, outStock = 0, totalValue = 0;
+
+    rows.forEach(b => {
+      if (b.quantity === 0) outStock++;
+      else if (b.quantity <= 10) lowStock++;
+      else inStock++;
+      totalValue += b.quantity * b.price;
+    });
+
+    // Instead of inserting duplicates, replace the latest summary
     await db.query(
-      `INSERT INTO bedsheet_summary (total, inStock, lowStock, outStock, totalValue) VALUES (?, ?, ?, ?, ?)`,
+      `REPLACE INTO bedsheet_summary (id, total, inStock, lowStock, outStock, totalValue, updated_at) 
+       VALUES (1, ?, ?, ?, ?, ?, NOW())`,
       [total, inStock, lowStock, outStock, totalValue]
     );
-    res.json({ message: "Summary saved successfully" });
+  } catch (err) {
+    console.error("Failed to update summary:", err);
+  }
+}
+exports.getSummary = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM bedsheet_summary WHERE id=1 LIMIT 1"
+    );
+    res.json(rows[0] || {});
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to save summary" });
+    res.status(500).json({ error: "Failed to fetch summary" });
+  }
+};
+exports.getSalesBedsheets = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT s.id, s.responsible, s.customer_name, b.brand, s.type, 
+             s.quantity, s.total_price, s.date
+      FROM sales_bedsheets s
+      JOIN bedsheets b ON s.bedsheet_id = b.id
+      ORDER BY s.date DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching sales" });
+  }
+};
+exports.addSalesBedsheet = async (req, res) => {
+  try {
+    const { responsible, customerName, bedsheet_id, type, quantity } = req.body;
+
+    // Get bedsheet details
+    const [bedsheetRows] = await db.query(
+      "SELECT * FROM bedsheets WHERE id = ? LIMIT 1",
+      [bedsheet_id]
+    );
+
+    if (bedsheetRows.length === 0) {
+      return res.status(404).json({ message: "Bedsheet not found" });
+    }
+
+    const bedsheet = bedsheetRows[0];
+
+    if (quantity > bedsheet.quantity) {
+      return res.status(400).json({ message: "Not enough stock available" });
+    }
+
+    const totalPrice = bedsheet.price * quantity;
+
+    // Insert sale into sales_bedsheets
+    await db.query(
+      `INSERT INTO sales_bedsheets (responsible, customer_name, bedsheet_id, type, quantity, total_price, date)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [responsible, customerName, bedsheet_id, type, quantity, totalPrice]
+    );
+
+    // Update bedsheet stock
+    await db.query(
+      "UPDATE bedsheets SET quantity = quantity - ? WHERE id = ?",
+      [quantity, bedsheet_id]
+    );
+
+    res.json({ message: "Sale recorded successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error recording sale" });
+  }
+};
+exports.deleteSale = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get sale first
+    const [rows] = await db.query("SELECT * FROM sales WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Sale not found" });
+    }
+
+    const sale = rows[0];
+
+    // Return stock to product
+    await db.query(
+      "UPDATE bedsheets SET quantity = quantity + ? WHERE id = ?",
+      [sale.quantity, sale.bedsheet_id]
+    );
+
+    // Delete sale
+    await db.query("DELETE FROM sales WHERE id = ?", [id]);
+
+    res.json({ message: "Sale deleted and stock updated" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error deleting sale" });
   }
 };
 

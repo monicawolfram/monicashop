@@ -122,11 +122,18 @@
             </div>
             <div class="mb-3">
               <label>Bedsheet</label>
-              <select class="form-control" id="saleBedsheet" required></select>
+              <select class="form-control" id="saleBedsheet" required>
+                <option value="">-- Select Bedsheet --</option>
+                <option value="1" data-price="25000" data-size="Single">Sleepy (Single) - 25,000 TZS</option>
+                <option value="2" data-price="30000" data-size="Double">Dreamy (Double) - 30,000 TZS</option>
+                <option value="3" data-price="35000" data-size="Queen">Cozy (Queen) - 35,000 TZS</option>
+                <option value="4" data-price="40000" data-size="King">Luxury (King) - 40,000 TZS</option>
+                <option value="5" data-price="45000" data-size="Super King">Royal (Super King) - 45,000 TZS</option>
+              </select>
             </div>
             <div class="mb-3">
               <label>Type / Size</label>
-              <input type="text" class="form-control" id="saleType" placeholder="e.g., King, Queen" required>
+              <input type="text" class="form-control" id="saleType" readonly>
             </div>
             <div class="mb-3">
               <label>Quantity</label>
@@ -147,150 +154,132 @@
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-  let bedsheets = [
-    {id:1, brand:"Luxury Sleep", size:"King", color:"White", quantity:50, price:25000},
-    {id:2, brand:"ComfortZone", size:"Queen", color:"Blue", quantity:5, price:18000},
-    {id:3, brand:"SleepWell", size:"Single", color:"Grey", quantity:0, price:12000},
-  ];
+let sales = [];
 
-  let sales = [];
+// Auto-fill size when selecting bedsheet
+document.getElementById("saleBedsheet").addEventListener("change", function() {
+  const selected = this.options[this.selectedIndex];
+  document.getElementById("saleType").value = selected?.dataset.size || "";
+  calcTotal();
+});
 
-  function loadBedsheetOptions() {
-    const select = document.getElementById("saleBedsheet");
-    select.innerHTML = "";
-    bedsheets.forEach(b => {
-      select.innerHTML += `<option value="${b.id}" data-price="${b.price}" data-size="${b.size}">${b.brand} (${b.size}) - ${b.price.toLocaleString()} TZS</option>`;
-    });
-  }
+// Auto-calc total price
+document.getElementById("saleQuantity").addEventListener("input", calcTotal);
 
-  // Auto-calculate total price
-  const quantityInput = document.getElementById("saleQuantity");
-  const bedsheetSelect = document.getElementById("saleBedsheet");
-  const totalInput = document.getElementById("saleTotal");
-  function calculateTotal() {
-    const selectedOption = bedsheetSelect.selectedOptions[0];
-    const price = parseInt(selectedOption.dataset.price || 0);
-    const qty = parseInt(quantityInput.value || 0);
-    totalInput.value = (price * qty).toLocaleString() + " TZS";
-    document.getElementById("saleType").value = selectedOption.dataset.size;
-  }
-  bedsheetSelect.addEventListener("change", calculateTotal);
-  quantityInput.addEventListener("input", calculateTotal);
+function calcTotal() {
+  const bedsheet = document.getElementById("saleBedsheet");
+  const quantity = parseInt(document.getElementById("saleQuantity").value) || 0;
+  const price = parseInt(bedsheet.options[bedsheet.selectedIndex]?.dataset.price) || 0;
+  document.getElementById("saleTotal").value = (quantity * price).toLocaleString();
+}
 
-  function updateTotals() {
-    let todayTotal = 0, weekTotal = 0, monthTotal = 0, yearTotal = 0;
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-
-    sales.forEach(s => {
-      const d = s.date;
-      if(d.toDateString() === now.toDateString()) todayTotal += s.total;
-      if(d >= startOfWeek) weekTotal += s.total;
-      if(d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) monthTotal += s.total;
-      if(d.getFullYear() === now.getFullYear()) yearTotal += s.total;
-    });
-
-    document.getElementById("todayTotal").innerText = todayTotal.toLocaleString() + " TZS";
-    document.getElementById("weekTotal").innerText = weekTotal.toLocaleString() + " TZS";
-    document.getElementById("monthTotal").innerText = monthTotal.toLocaleString() + " TZS";
-    document.getElementById("yearTotal").innerText = yearTotal.toLocaleString() + " TZS";
-  }
-
-  function updateSalesTable() {
+// Load sales from server
+async function loadSales() {
+  try {
+    const res = await fetch("/sales-bedsheets");
+    sales = await res.json();
     const tbody = document.getElementById("salesTableBody");
     tbody.innerHTML = "";
-    sales.forEach((s, index) => {
+
+    sales.forEach(s => {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${s.id}</td>
         <td>${s.responsible}</td>
-        <td>${s.customer}</td>
-        <td>${s.bedsheet}</td>
+        <td>${s.customer_name}</td>
+        <td>${s.brand}</td>
         <td>${s.type}</td>
         <td>${s.quantity}</td>
-        <td>${s.total.toLocaleString()}</td>
-        <td>${s.date.toLocaleString()}</td>
+        <td>${s.total_price.toLocaleString()}</td>
+        <td>${new Date(s.date).toLocaleString()}</td>
         <td>
-          <button class="btn btn-sm btn-primary" onclick="editSale(${index})"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSale(${index})"><i class="fas fa-trash"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSale(${s.id})">
+            <i class="fas fa-trash"></i>
+          </button>
         </td>
       `;
       tbody.appendChild(row);
     });
+
     updateTotals();
+  } catch(err) {
+    console.error("Failed to load sales:", err);
   }
+}
 
-  document.getElementById("addSaleForm").addEventListener("submit", function(e){
-    e.preventDefault();
-    const responsible = document.getElementById("saleResponsible").value;
-    const customer = document.getElementById("customerName").value;
-    const bedsheetId = parseInt(document.getElementById("saleBedsheet").value);
-    const type = document.getElementById("saleType").value;
-    const quantity = parseInt(document.getElementById("saleQuantity").value);
+// Update totals (Today / Week / Month / Year)
+function updateTotals() {
+  const now = new Date();
+  let today = 0, week = 0, month = 0, year = 0;
 
-    const product = bedsheets.find(b => b.id === bedsheetId);
-    if(!product) return alert("Bedsheet not found!");
-    if(quantity > product.quantity) return alert("Not enough stock!");
+  sales.forEach(s => {
+    const d = new Date(s.date);
+    const total = s.total_price;
 
-    const totalPrice = product.price * quantity;
-
-    const newSale = {
-      id: sales.length + 1,
-      responsible,
-      customer,
-      bedsheet: product.brand,
-      type,
-      quantity,
-      total: totalPrice,
-      date: new Date()
-    };
-    sales.push(newSale);
-    product.quantity -= quantity;
-
-    updateSalesTable();
-    this.reset();
-    totalInput.value = "";
-    bootstrap.Modal.getInstance(document.getElementById("addSaleModal")).hide();
+    if (d.toDateString() === now.toDateString()) today += total;
+    if (d.getFullYear() === now.getFullYear()) {
+      year += total;
+      if (d.getMonth() === now.getMonth()) month += total;
+      const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+      if (diffDays <= 7) week += total;
+    }
   });
 
-  function deleteSale(index) {
-    if(confirm("Delete this sale?")){
-      const sale = sales[index];
-      // Return quantity to stock
-      const product = bedsheets.find(b => b.brand === sale.bedsheet && b.size === sale.type);
-      if(product) product.quantity += sale.quantity;
+  document.getElementById("todayTotal").innerText = today.toLocaleString();
+  document.getElementById("weekTotal").innerText = week.toLocaleString();
+  document.getElementById("monthTotal").innerText = month.toLocaleString();
+  document.getElementById("yearTotal").innerText = year.toLocaleString();
+}
 
-      sales.splice(index,1);
-      updateSalesTable();
+// Submit sale
+document.getElementById("addSaleForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const data = {
+    responsible: document.getElementById("saleResponsible").value,
+    customer_name: document.getElementById("customerName").value,
+    bedsheet_id: parseInt(document.getElementById("saleBedsheet").value),
+    type: document.getElementById("saleType").value,
+    quantity: parseInt(document.getElementById("saleQuantity").value)
+  };
+
+  try {
+    const res = await fetch("/add-bedsheets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if(result.message) alert(result.message);
+
+    loadSales();
+    this.reset();
+    document.getElementById("saleTotal").value = "";
+    bootstrap.Modal.getInstance(document.getElementById("addSaleModal")).hide();
+  } catch(err) {
+    console.error("Failed to add sale:", err);
+  }
+});
+
+// Delete Sale
+async function deleteSale(id) {
+  if(confirm("Delete this sale?")) {
+    try {
+      const res = await fetch(`/delete/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if(result.message) alert(result.message);
+      loadSales();
+    } catch(err) {
+      console.error("Failed to delete sale:", err);
     }
   }
+}
 
-  function editSale(index) {
-    const sale = sales[index];
-    // Pre-fill modal with data
-    document.getElementById("saleResponsible").value = sale.responsible;
-    document.getElementById("customerName").value = sale.customer;
-    const bedsheetOption = Array.from(bedsheetSelect.options).find(opt => opt.text.includes(sale.bedsheet + " (" + sale.type + ")"));
-    if(bedsheetOption) bedsheetOption.selected = true;
-    document.getElementById("saleQuantity").value = sale.quantity;
-    calculateTotal();
-
-    // Remove old sale from array temporarily
-    sales.splice(index,1);
-    updateSalesTable();
-
-    bootstrap.Modal.getInstance(document.getElementById("addSaleModal")).show();
-  }
-
-  document.getElementById("toggleSidebar").addEventListener("click", function() {
-    document.getElementById("sidebar").classList.toggle("collapsed");
-    document.getElementById("main-content").classList.toggle("collapsed");
-  });
-
-  loadBedsheetOptions();
-  updateSalesTable();
+// Initial load
+loadSales();
 </script>
+
+
 </body>
 </html>

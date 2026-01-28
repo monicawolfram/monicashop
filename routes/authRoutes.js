@@ -62,14 +62,15 @@ router.delete('/delete/:id', authController.deleteDebt);
 router.put('/payment/:id', authController.recordPayment);
 
 
-router.get('/all/bedsheets', authController.getAllBedsheets);
-router.post('/add-bedsheets', authController.addBedsheet);
-router.put('/edit-bedsheets/:id', authController.editBedsheet);
-router.delete('/delete-bedsheets/:id', authController.deleteBedsheet);
-router.post('/save-summary', authController.saveSummary);
+router.get("/all/bedsheets", authController.getAllBedsheets);
+router.post("/add-bedsheets", authController.addBedsheet);
+router.put("/edit-bedsheets/:id", authController.editBedsheet);
+router.delete("/delete-bedsheets/:id", authController.deleteBedsheet);
+router.get("/bedsheet-summary", authController.getSummary);
 
-
-
+router.get("/sales-bedsheets", authController.getSalesBedsheets);
+router.post("/add-bedsheets", authController.addSalesBedsheet);
+router.delete("/delete:id", authController.deleteSale);
 
 
 router.get("/shop/Home", authController.getHome);

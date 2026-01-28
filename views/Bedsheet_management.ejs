@@ -147,7 +147,10 @@ async function fetchBedsheets() {
   try {
     const res = await fetch('/all/bedsheets');
     const bedsheets = await res.json();
-    updateTable(bedsheets);  // 👈 update table & auto calculate
+    updateTable(bedsheets);
+
+    // fetch summary from backend
+    fetchSummary();
   } catch (err) {
     console.error(err);
   }
@@ -184,9 +187,6 @@ function updateTable(bedsheets) {
   });
 
   totalStockValueElem.textContent = `Total Stock Value: ${totalStockValue.toLocaleString()} TZS`;
-
-  // Auto calculate summary (totals, inStock, lowStock, etc.)
-  calculateSummary(bedsheets);
 }
 
 function statusClass(status){
@@ -198,38 +198,21 @@ function statusClass(status){
   }
 }
 
-function calculateSummary(bedsheets) {
-  let total = bedsheets.length;
-  let inStock = 0, lowStock = 0, outStock = 0;
-  let totalValue = 0;
-
-  bedsheets.forEach(b => {
-    if (b.quantity === 0) outStock++;
-    else if (b.quantity <= 10) lowStock++;
-    else inStock++;
-    totalValue += b.quantity * b.price;
-  });
-
-  // Update DOM
-  document.getElementById("totalBedsheets").textContent = total;
-  document.getElementById("inStock").textContent = inStock;
-  document.getElementById("lowStock").textContent = lowStock;
-  document.getElementById("outStock").textContent = outStock;
-  document.getElementById("totalValue").textContent = totalValue.toLocaleString();
-
-  // Send summary to backend for saving
-  saveSummary({ total, inStock, lowStock, outStock, totalValue });
-}
-
-async function saveSummary(summary) {
+// Fetch summary from backend
+async function fetchSummary() {
   try {
-    await fetch('/save-summary', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(summary)
-    });
+    const res = await fetch('/bedsheet-summary');
+    const summary = await res.json();
+
+    if (summary.total !== undefined) {
+      document.getElementById("totalBedsheets").textContent = summary.total;
+      document.getElementById("inStock").textContent = summary.inStock;
+      document.getElementById("lowStock").textContent = summary.lowStock;
+      document.getElementById("outStock").textContent = summary.outStock;
+      document.getElementById("totalValue").textContent = Number(summary.totalValue).toLocaleString();
+    }
   } catch (err) {
-    console.error("Failed to save summary:", err);
+    console.error("Failed to fetch summary:", err);
   }
 }
 
@@ -281,6 +264,7 @@ document.getElementById("toggleSidebar").addEventListener("click", function() {
 // Fetch on load
 fetchBedsheets();
 </script>
+
 
 
 
